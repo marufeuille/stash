@@ -178,7 +178,6 @@ describe('詳細ページのビルド結果検証', () => {
     for (const post of photoPosts) {
       const html = readFileSync(resolve(ROOT, 'dist', post.type, post.slug, 'index.html'), 'utf-8');
       expect(html).toContain('<img');
-      expect(html).toContain(post.data.image);
       expect(html).toContain(post.data.alt);
     }
   });

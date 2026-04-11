@@ -1,18 +1,18 @@
-import { defineCollection } from 'astro:content';
+import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { z } from 'zod';
 
 const photo = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './content/photo' }),
-  schema: z.object({
-    type: z.literal('photo'),
-    title: z.string().optional(),
-    date: z.coerce.date(),
-    image: z.string(),
-    alt: z.string(),
-    tags: z.array(z.string()).default([]),
-    draft: z.boolean().default(false),
-  }),
+  schema: ({ image }) =>
+    z.object({
+      type: z.literal('photo'),
+      title: z.string().optional(),
+      date: z.coerce.date(),
+      image: image(),
+      alt: z.string(),
+      tags: z.array(z.string()).default([]),
+      draft: z.boolean().default(false),
+    }),
 });
 
 const reading = defineCollection({
