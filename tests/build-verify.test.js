@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 import { execSync } from 'child_process';
-import matter from 'gray-matter';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const DIST = resolve(ROOT, 'dist');
@@ -10,7 +9,7 @@ const DIST = resolve(ROOT, 'dist');
 describe('ビルド検証と最終調整', () => {
   beforeAll(() => {
     execSync('npx astro build', { cwd: ROOT, stdio: 'pipe' });
-  });
+  }, 120_000);
 
   describe('astro build がエラーなく成功する', () => {
     it('dist/ ディレクトリが生成される', () => {
@@ -114,12 +113,13 @@ describe('ビルド検証と最終調整', () => {
   describe('トップページ → 詳細ページの遷移がすべて正常に動作する', () => {
     it('トップページの全リンク先が実在する', () => {
       const html = readFileSync(resolve(DIST, 'index.html'), 'utf-8');
-      const linkMatches = [...html.matchAll(/href="(\/(?:photo|reading|note)\/[^"]+\/)"/g)];
+      const linkMatches = [...html.matchAll(/href="(\/(?:photo|reading|note)\/[^"]*?)"/g)];
       expect(linkMatches.length).toBeGreaterThanOrEqual(4);
 
       for (const match of linkMatches) {
-        const linkPath = match[1]; // e.g. /photo/morning-sky/
-        const filePath = resolve(DIST, linkPath.slice(1), 'index.html');
+        const linkPath = match[1]; // e.g. /photo/morning-sky/ or /photo/morning-sky
+        const normalized = linkPath.endsWith('/') ? linkPath : linkPath + '/';
+        const filePath = resolve(DIST, normalized.slice(1), 'index.html');
         expect(existsSync(filePath), `Missing page for link: ${linkPath}`).toBe(true);
       }
     });
