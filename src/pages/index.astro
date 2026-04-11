@@ -1,0 +1,23 @@
+---
+import { getCollection } from 'astro:content';
+
+const photos = await getCollection('photo');
+const readings = await getCollection('reading');
+const notes = await getCollection('note');
+
+const allPosts = [...photos, ...readings, ...notes]
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+---
+
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>stash</title>
+  </head>
+  <body>
+    <h1>stash</h1>
+    <p>{allPosts.length} posts</p>
+  </body>
+</html>

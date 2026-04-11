@@ -1,9 +1,11 @@
 {
-  "name": "01-frontmatter-spec-and-sample-posts-03-photo-samples",
+  "name": "stash",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "check": "astro check",
     "test": "vitest run"
   },
   "keywords": [],
@@ -13,5 +15,10 @@
   "devDependencies": {
     "gray-matter": "^4.0.3",
     "vitest": "^4.1.4"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.8",
+    "astro": "^6.1.5",
+    "typescript": "^5.9.3"
   }
 }
