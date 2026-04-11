@@ -24,7 +24,7 @@ describe('photo sample posts', () => {
     const { data } = readPost(file);
     expect(data.type).toBe('photo');
     expect(data.date).toBeInstanceOf(Date);
-    expect(data.image).toMatch(/^\/attachments\/.+/);
+    expect(data.image).toMatch(/attachments\/.+/);
     expect(typeof data.alt).toBe('string');
     expect(typeof data.draft).toBe('boolean');
     expect(Array.isArray(data.tags)).toBe(true);
@@ -32,8 +32,8 @@ describe('photo sample posts', () => {
 
   it.each(posts)('%s の image が参照する画像ファイルが存在する', (file) => {
     const { data } = readPost(file);
-    // image は "/attachments/xxx.png" 形式なので先頭 / を除いてパス解決
-    const imagePath = resolve(ROOT, data.image.replace(/^\//, ''));
+    // image は "../../attachments/xxx.png" 形式（content/photo からの相対パス）
+    const imagePath = resolve(photoDir, data.image);
     expect(existsSync(imagePath)).toBe(true);
   });
 

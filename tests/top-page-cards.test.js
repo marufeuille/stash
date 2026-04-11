@@ -15,7 +15,7 @@ describe('カードコンポーネントの存在確認', () => {
 
   it('CardPhoto にサムネイル画像表示がある', () => {
     const src = readFileSync(resolve(ROOT, 'src/components/CardPhoto.astro'), 'utf-8');
-    expect(src).toContain('<img');
+    expect(src).toMatch(/<(?:img|Image)/);
     expect(src).toContain('image');
     expect(src).toContain('alt');
   });
@@ -156,7 +156,6 @@ describe('ビルド結果の検証', () => {
   it('photo カードにサムネイル画像がある', () => {
     expect(html).toContain('card-photo');
     expect(html).toContain('<img');
-    expect(html).toContain('/attachments/');
   });
 
   it('reading カードに書籍情報がある', () => {

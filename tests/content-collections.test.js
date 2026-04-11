@@ -28,7 +28,7 @@ describe('Content Collections config', () => {
     );
     // photo collection の schema 定義に必要なフィールドが含まれる
     expect(config).toContain("literal('photo')");
-    expect(config).toMatch(/image.*string/);
+    expect(config).toMatch(/image.*image\(\)/);
     expect(config).toMatch(/alt.*string/);
     expect(config).toMatch(/draft.*boolean/);
   });
