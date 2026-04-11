@@ -1,5 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
+import CardPhoto from '../components/CardPhoto.astro';
+import CardReading from '../components/CardReading.astro';
+import CardNote from '../components/CardNote.astro';
 
 const photos = await getCollection('photo');
 const readings = await getCollection('reading');
@@ -17,7 +20,82 @@ const allPosts = [...photos, ...readings, ...notes]
     <title>stash</title>
   </head>
   <body>
-    <h1>stash</h1>
-    <p>{allPosts.length} posts</p>
+    <header>
+      <h1>stash</h1>
+      <p class="post-count">{allPosts.length} posts</p>
+    </header>
+    <main>
+      <ul class="card-list">
+        {allPosts.map((post) => (
+          <li>
+            {post.data.type === 'photo' && (
+              <CardPhoto
+                id={post.id}
+                title={post.data.title}
+                date={post.data.date}
+                image={post.data.image}
+                alt={post.data.alt}
+                tags={post.data.tags}
+              />
+            )}
+            {post.data.type === 'reading' && (
+              <CardReading
+                id={post.id}
+                title={post.data.title}
+                date={post.data.date}
+                book={post.data.book}
+                author={post.data.author}
+                progress={post.data.progress}
+                tags={post.data.tags}
+              />
+            )}
+            {post.data.type === 'note' && (
+              <CardNote
+                id={post.id}
+                title={post.data.title}
+                date={post.data.date}
+                tags={post.data.tags}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </main>
   </body>
 </html>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #333;
+    background: #fafafa;
+    line-height: 1.6;
+  }
+  header {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 32px 16px 16px;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+  .post-count {
+    font-size: 0.85rem;
+    color: #888;
+  }
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 16px 32px;
+  }
+  .card-list {
+    list-style: none;
+    display: grid;
+    gap: 16px;
+  }
+</style>
