@@ -1,0 +1,17 @@
+{
+  "name": "01-frontmatter-spec-and-sample-posts-03-photo-samples",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "gray-matter": "^4.0.3",
+    "vitest": "^4.1.4"
+  }
+}
