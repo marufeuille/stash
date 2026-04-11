@@ -1,0 +1,177 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const photos = await getCollection('photo');
+  const readings = await getCollection('reading');
+  const notes = await getCollection('note');
+
+  const allPosts = [...photos, ...readings, ...notes]
+    .filter((post) => !post.data.draft);
+
+  return allPosts.map((post) => ({
+    params: { type: post.data.type, slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const dateStr = post.data.date.toISOString().slice(0, 10);
+const displayTitle = post.data.title || (post.data.type === 'reading' ? post.data.book : 'Untitled');
+---
+
+<BaseLayout title={`${displayTitle} - stash`}>
+  <article class="detail">
+    <header class="detail-header">
+      <span class={`detail-type detail-type-${post.data.type}`}>{post.data.type}</span>
+      <time datetime={dateStr}>{dateStr}</time>
+      <h1 class="detail-title">{displayTitle}</h1>
+
+      {post.data.type === 'photo' && (
+        <div class="detail-photo">
+          <img src={post.data.image} alt={post.data.alt} />
+        </div>
+      )}
+
+      {post.data.type === 'reading' && (
+        <div class="detail-meta detail-reading-meta">
+          <dl>
+            <dt>Book</dt>
+            <dd>{post.data.book}</dd>
+            <dt>Author</dt>
+            <dd>{post.data.author}</dd>
+            {post.data.progress && (
+              <>
+                <dt>Progress</dt>
+                <dd>{post.data.progress}</dd>
+              </>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {post.data.tags.length > 0 && (
+        <ul class="detail-tags">
+          {post.data.tags.map((tag: string) => <li>{tag}</li>)}
+        </ul>
+      )}
+    </header>
+
+    <div class="detail-body">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .detail {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 32px 16px;
+  }
+  .detail-header {
+    margin-bottom: 32px;
+  }
+  .detail-type {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  .detail-type-photo {
+    background: #e67e22;
+  }
+  .detail-type-reading {
+    background: #3498db;
+  }
+  .detail-type-note {
+    background: #2ecc71;
+  }
+  time {
+    font-size: 0.85rem;
+    color: #888;
+  }
+  .detail-title {
+    margin: 12px 0 16px;
+    font-size: 1.6rem;
+    line-height: 1.4;
+  }
+  .detail-photo {
+    margin: 16px 0;
+  }
+  .detail-photo img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+  .detail-meta dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    font-size: 0.9rem;
+    margin: 16px 0;
+  }
+  .detail-meta dt {
+    font-weight: 600;
+    color: #555;
+  }
+  .detail-meta dd {
+    margin: 0;
+  }
+  .detail-tags {
+    display: flex;
+    gap: 6px;
+    list-style: none;
+    flex-wrap: wrap;
+    margin: 12px 0 0;
+  }
+  .detail-tags li {
+    font-size: 0.75rem;
+    background: #f0f0f0;
+    color: #555;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .detail-body {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: #444;
+  }
+  .detail-body :global(p) {
+    margin: 16px 0;
+  }
+  .detail-body :global(h2) {
+    margin: 24px 0 12px;
+    font-size: 1.3rem;
+  }
+  .detail-body :global(h3) {
+    margin: 20px 0 8px;
+    font-size: 1.1rem;
+  }
+  .detail-body :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+  .detail-body :global(blockquote) {
+    border-left: 3px solid #ddd;
+    margin: 16px 0;
+    padding: 8px 16px;
+    color: #666;
+  }
+
+  @media (max-width: 600px) {
+    .detail {
+      padding: 24px 12px;
+    }
+    .detail-title {
+      font-size: 1.3rem;
+    }
+  }
+</style>
