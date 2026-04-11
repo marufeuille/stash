@@ -1,0 +1,55 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'stash - personal micro blog' } = Astro.props;
+---
+
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <nav class="global-nav">
+      <a href="/" class="nav-home">stash</a>
+    </nav>
+    <slot />
+  </body>
+</html>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #333;
+    background: #fafafa;
+    line-height: 1.6;
+  }
+  .global-nav {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+  }
+  .nav-home {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: #333;
+  }
+  .nav-home:hover {
+    color: #555;
+  }
+</style>

@@ -85,9 +85,12 @@ describe('トップページ（index.astro）の実装', () => {
     expect(indexSrc).toContain("type === 'note'");
   });
 
-  it('レスポンシブ対応の viewport meta タグがある', () => {
-    expect(indexSrc).toContain('viewport');
-    expect(indexSrc).toContain('width=device-width');
+  it('レスポンシブ対応の viewport meta タグがある（BaseLayout経由）', () => {
+    // viewport は BaseLayout に移動済み
+    expect(indexSrc).toContain('BaseLayout');
+    const layoutSrc = readFileSync(resolve(ROOT, 'src/layouts/BaseLayout.astro'), 'utf-8');
+    expect(layoutSrc).toContain('viewport');
+    expect(layoutSrc).toContain('width=device-width');
   });
 });
 

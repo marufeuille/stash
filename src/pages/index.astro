@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
 import CardPhoto from '../components/CardPhoto.astro';
 import CardReading from '../components/CardReading.astro';
 import CardNote from '../components/CardNote.astro';
@@ -13,69 +14,51 @@ const allPosts = [...photos, ...readings, ...notes]
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 ---
 
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>stash</title>
-  </head>
-  <body>
-    <header>
-      <h1>stash</h1>
-      <p class="post-count">{allPosts.length} posts</p>
-    </header>
-    <main>
-      <ul class="card-list">
-        {allPosts.map((post) => (
-          <li>
-            {post.data.type === 'photo' && (
-              <CardPhoto
-                id={post.id}
-                title={post.data.title}
-                date={post.data.date}
-                image={post.data.image}
-                alt={post.data.alt}
-                tags={post.data.tags}
-              />
-            )}
-            {post.data.type === 'reading' && (
-              <CardReading
-                id={post.id}
-                title={post.data.title}
-                date={post.data.date}
-                book={post.data.book}
-                author={post.data.author}
-                progress={post.data.progress}
-                tags={post.data.tags}
-              />
-            )}
-            {post.data.type === 'note' && (
-              <CardNote
-                id={post.id}
-                title={post.data.title}
-                date={post.data.date}
-                tags={post.data.tags}
-              />
-            )}
-          </li>
-        ))}
-      </ul>
-    </main>
-  </body>
-</html>
+<BaseLayout title="stash">
+  <header>
+    <h1>stash</h1>
+    <p class="post-count">{allPosts.length} posts</p>
+  </header>
+  <main>
+    <ul class="card-list">
+      {allPosts.map((post) => (
+        <li>
+          {post.data.type === 'photo' && (
+            <CardPhoto
+              id={post.id}
+              title={post.data.title}
+              date={post.data.date}
+              image={post.data.image}
+              alt={post.data.alt}
+              tags={post.data.tags}
+            />
+          )}
+          {post.data.type === 'reading' && (
+            <CardReading
+              id={post.id}
+              title={post.data.title}
+              date={post.data.date}
+              book={post.data.book}
+              author={post.data.author}
+              progress={post.data.progress}
+              tags={post.data.tags}
+            />
+          )}
+          {post.data.type === 'note' && (
+            <CardNote
+              id={post.id}
+              title={post.data.title}
+              date={post.data.date}
+              tags={post.data.tags}
+            />
+          )}
+        </li>
+      ))}
+    </ul>
+  </main>
+</BaseLayout>
 
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #333;
-    background: #fafafa;
-    line-height: 1.6;
-  }
   header {
     max-width: 800px;
     margin: 0 auto;
