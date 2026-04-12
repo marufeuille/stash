@@ -30,7 +30,7 @@ if (LOCAL_VAULT) {
   }
   console.log(`Syncing content from local vault: ${src}`);
   cleanContent();
-  for (const sub of ['note', 'reading', 'photo']) {
+  for (const sub of ['note', 'reading', 'photo', 'attachments']) {
     const from = resolve(src, sub);
     if (existsSync(from)) {
       cpSync(from, resolve(CONTENT_DIR, sub), { recursive: true });
@@ -59,7 +59,7 @@ if (existsSync(TMP)) rmSync(TMP, { recursive: true, force: true });
 run(`git clone --depth=1 --branch=${BRANCH} ${url} ${TMP}`);
 
 cleanContent();
-for (const sub of ['note', 'reading', 'photo']) {
+for (const sub of ['note', 'reading', 'photo', 'attachments']) {
   const from = resolve(TMP, sub);
   if (existsSync(from)) {
     cpSync(from, resolve(CONTENT_DIR, sub), { recursive: true });
