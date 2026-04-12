@@ -6,3 +6,4 @@ dist/
 # content/ is sourced from stash-vault repo at build time via scripts/sync-content.mjs
 # For local dev: set STASH_VAULT_PATH=/path/to/local/vault, then `npm run sync-content`
 content/
+tmp/
