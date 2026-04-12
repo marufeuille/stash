@@ -3,35 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
 <BaseLayout title="compose — stash">
+  <Fragment slot="head">
+    <meta http-equiv="refresh" content="0; url=/compose/note" />
+  </Fragment>
   <div class="compose">
-    <p class="hint">opening Obsidian…</p>
-    <p class="fallback">
-      If nothing happens,
-      <a id="manual" href="#">tap here</a> to create a new fragment.
-    </p>
-    <p class="tiny">
-      <a href="/?own=1">enable capture bar on home</a>
-    </p>
+    <p>redirecting…</p>
+    <p><a href="/compose/note">/compose/note</a></p>
   </div>
-
   <script is:inline>
-    (function () {
-      localStorage.setItem('stashOwner', '1');
-      function pad(n) { return String(n).padStart(2, '0'); }
-      var d = new Date();
-      var name =
-        d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-        '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
-      var content =
-        '---\ntype: note\ndate: ' +
-        d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-        '\ntags: []\ndraft: true\n---\n\n';
-      var href = 'obsidian://new?vault=stash&file=' +
-        encodeURIComponent('note/' + name) +
-        '&content=' + encodeURIComponent(content);
-      document.getElementById('manual').href = href;
-      location.href = href;
-    })();
+    location.replace('/compose/note');
   </script>
 </BaseLayout>
 
@@ -39,26 +19,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .compose {
     padding: 80px 0;
     text-align: center;
-  }
-  .hint {
     font-family: var(--mono);
     font-size: 13px;
     color: var(--faint);
-    margin-bottom: 24px;
   }
-  .fallback {
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .fallback a {
+  .compose a {
     color: var(--ink);
     border-bottom: 1px solid var(--hairline);
   }
-  .tiny {
-    margin-top: 48px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--faintest);
-  }
-  .tiny a { color: inherit; border-bottom: 1px solid var(--hairline); }
 </style>

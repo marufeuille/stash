@@ -1,0 +1,11 @@
+{
+  "name": "stash · reading",
+  "short_name": "reading",
+  "start_url": "/compose/reading",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#fafaf7",
+  "icons": [
+    { "src": "/icons/reading.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

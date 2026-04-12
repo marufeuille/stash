@@ -1,0 +1,11 @@
+{
+  "name": "stash · note",
+  "short_name": "note",
+  "start_url": "/compose/note",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#fafaf7",
+  "icons": [
+    { "src": "/icons/note.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

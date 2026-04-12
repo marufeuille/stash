@@ -1,0 +1,11 @@
+{
+  "name": "stash · photo",
+  "short_name": "photo",
+  "start_url": "/compose/photo",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#fafaf7",
+  "icons": [
+    { "src": "/icons/photo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

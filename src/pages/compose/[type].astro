@@ -1,0 +1,78 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export function getStaticPaths() {
+  return [
+    { params: { type: 'note' } },
+    { params: { type: 'reading' } },
+    { params: { type: 'photo' } },
+  ];
+}
+
+const { type } = Astro.params as { type: 'note' | 'reading' | 'photo' };
+
+const templates = {
+  note: 'type: note\ndate: {{date}}\ntags: []\ndraft: true\n',
+  reading: 'type: reading\ndate: {{date}}\nbook: ""\nauthor: ""\ntags: []\ndraft: true\n',
+  photo: 'type: photo\ndate: {{date}}\nimage: ""\nalt: ""\ntags: []\ndraft: true\n',
+};
+
+const template = templates[type];
+---
+
+<BaseLayout title={`compose ${type} — stash`}>
+  <Fragment slot="head">
+    <link rel="manifest" href={`/manifest-${type}.json`} />
+    <link rel="apple-touch-icon" href={`/icons/${type}.png`} />
+    <meta name="theme-color" content="#fafaf7" />
+  </Fragment>
+
+  <div class="compose">
+    <p class={`hint hint-${type}`}>opening Obsidian · {type}…</p>
+    <p class="fallback">
+      If nothing happens,
+      <a id="manual" href="#">tap here</a> to create.
+    </p>
+  </div>
+
+  <script is:inline define:vars={{ type, template }}>
+    (function () {
+      localStorage.setItem('stashOwner', '1');
+      function pad(n) { return String(n).padStart(2, '0'); }
+      var d = new Date();
+      var dateStr =
+        d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      var name =
+        dateStr + '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
+      var frontmatter = '---\n' + template.replace('{{date}}', dateStr) + '---\n\n';
+      var href = 'obsidian://new?vault=stash&file=' +
+        encodeURIComponent(type + '/' + name) +
+        '&content=' + encodeURIComponent(frontmatter);
+      document.getElementById('manual').href = href;
+      location.href = href;
+    })();
+  </script>
+</BaseLayout>
+
+<style>
+  .compose {
+    padding: 80px 0;
+    text-align: center;
+  }
+  .hint {
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .hint-note { color: var(--note); }
+  .hint-reading { color: var(--reading); }
+  .hint-photo { color: var(--photo); }
+  .fallback {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .fallback a {
+    color: var(--ink);
+    border-bottom: 1px solid var(--hairline);
+  }
+</style>
