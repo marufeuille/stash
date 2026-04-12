@@ -1,9 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import CardPhoto from '../components/CardPhoto.astro';
-import CardReading from '../components/CardReading.astro';
-import CardNote from '../components/CardNote.astro';
+import StreamItem from '../components/StreamItem.astro';
+import { excerpt } from '../lib/excerpt';
 
 const photos = await getCollection('photo');
 const readings = await getCollection('reading');
@@ -14,71 +13,119 @@ const allPosts = [...photos, ...readings, ...notes]
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 ---
 
-<BaseLayout title="stash">
-  <header>
-    <h1>stash</h1>
-    <p class="post-count">{allPosts.length} posts</p>
-  </header>
-  <main>
-    <ul class="card-list">
-      {allPosts.map((post) => (
-        <li>
-          {post.data.type === 'photo' && (
-            <CardPhoto
-              id={post.id}
-              title={post.data.title}
-              date={post.data.date}
-              image={post.data.image}
-              alt={post.data.alt}
-              tags={post.data.tags}
-            />
-          )}
-          {post.data.type === 'reading' && (
-            <CardReading
-              id={post.id}
-              title={post.data.title}
-              date={post.data.date}
-              book={post.data.book}
-              author={post.data.author}
-              progress={post.data.progress}
-              tags={post.data.tags}
-            />
-          )}
-          {post.data.type === 'note' && (
-            <CardNote
-              id={post.id}
-              title={post.data.title}
-              date={post.data.date}
-              tags={post.data.tags}
-            />
-          )}
-        </li>
-      ))}
-    </ul>
+<BaseLayout title="stash" activeNav="all">
+  <a id="capture" class="capture" href="#" hidden>
+    <span class="capture-prompt">+ stash a fragment…</span>
+    <span class="capture-hint">⌘N</span>
+  </a>
+  <script is:inline>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      if (params.get('own') === '1') {
+        localStorage.setItem('stashOwner', '1');
+        history.replaceState(null, '', location.pathname);
+      }
+      if (localStorage.getItem('stashOwner') !== '1') return;
+      var el = document.getElementById('capture');
+      if (!el) return;
+      function pad(n) { return String(n).padStart(2, '0'); }
+      function buildHref() {
+        var d = new Date();
+        var name =
+          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+          '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
+        var content =
+          '---\ntype: note\ndate: ' +
+          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+          '\ntags: []\ndraft: true\n---\n\n';
+        return 'obsidian://new?vault=stash&file=' +
+          encodeURIComponent('note/' + name) +
+          '&content=' + encodeURIComponent(content);
+      }
+      el.hidden = false;
+      el.addEventListener('click', function (e) {
+        el.href = buildHref();
+      });
+      document.addEventListener('keydown', function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+          e.preventDefault();
+          el.href = buildHref();
+          location.href = el.href;
+        }
+      });
+    })();
+  </script>
+  <main class="stream">
+    {allPosts.map((post) => {
+      const d = post.data;
+      if (d.type === 'photo') {
+        return (
+          <StreamItem
+            type="photo"
+            href={`/photo/${post.id}/`}
+            title={d.title ?? 'Untitled'}
+            date={d.date}
+            tags={d.tags}
+            image={d.image}
+            alt={d.alt}
+          />
+        );
+      }
+      if (d.type === 'reading') {
+        return (
+          <StreamItem
+            type="reading"
+            href={`/reading/${post.id}/`}
+            title={d.title ?? d.book}
+            date={d.date}
+            tags={d.tags}
+            book={d.book}
+            author={d.author}
+            progress={d.progress}
+            excerpt={excerpt(post.body)}
+          />
+        );
+      }
+      return (
+        <StreamItem
+          type="note"
+          href={`/note/${post.id}/`}
+          title={d.title ?? 'Untitled'}
+          date={d.date}
+          tags={d.tags}
+          excerpt={excerpt(post.body)}
+        />
+      );
+    })}
   </main>
 </BaseLayout>
 
 <style>
-  header {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 32px 16px 16px;
+  .capture {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    margin-bottom: 24px;
+    color: inherit;
+    transition: border-color 0.15s ease;
   }
-  h1 {
-    font-size: 1.5rem;
+  .capture:hover {
+    border-color: var(--faint);
   }
-  .post-count {
-    font-size: 0.85rem;
-    color: #888;
+  .capture-prompt {
+    font-size: 14px;
+    color: var(--faint);
   }
-  main {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0 16px 32px;
+  .capture-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faintest);
   }
-  .card-list {
-    list-style: none;
-    display: grid;
-    gap: 16px;
+  .stream {
+    border-bottom: 1px solid var(--hairline);
   }
 </style>

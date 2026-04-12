@@ -1,0 +1,7 @@
+# Place this as .gitignore in the stash-vault repo root.
+# Obsidian workspace files don't need to sync across devices.
+
+.obsidian/workspace*
+.obsidian/cache
+.trash/
+.DS_Store

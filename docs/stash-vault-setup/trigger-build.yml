@@ -1,0 +1,16 @@
+# Place this file at .github/workflows/trigger-build.yml in the stash-vault repo.
+# On every push to main, it pings the Cloudflare Pages deploy hook
+# to trigger a rebuild of the stash site with the latest vault content.
+
+name: trigger stash build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Cloudflare Pages deploy hook
+        run: curl -fsSL -X POST "${{ secrets.CF_DEPLOY_HOOK }}"
