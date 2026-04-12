@@ -1,0 +1,262 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { excerpt } from '../lib/excerpt';
+
+const photos = await getCollection('photo');
+const readings = await getCollection('reading');
+const notes = await getCollection('note');
+
+type IndexEntry = {
+  type: 'note' | 'reading' | 'photo';
+  href: string;
+  title: string;
+  date: string;
+  tags: string[];
+  excerpt: string;
+  source?: string;
+  haystack: string;
+};
+
+const index: IndexEntry[] = [
+  ...notes.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+    const title = p.data.title ?? 'Untitled';
+    const ex = excerpt(p.body, 140);
+    return {
+      type: 'note',
+      href: `/note/${p.id}/`,
+      title,
+      date: p.data.date.toISOString().slice(0, 10),
+      tags: p.data.tags,
+      excerpt: ex,
+      haystack: [title, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
+    };
+  }),
+  ...readings.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+    const title = p.data.title ?? p.data.book;
+    const ex = excerpt(p.body, 140);
+    const source = `${p.data.book} — ${p.data.author}`;
+    return {
+      type: 'reading',
+      href: `/reading/${p.id}/`,
+      title,
+      date: p.data.date.toISOString().slice(0, 10),
+      tags: p.data.tags,
+      excerpt: ex,
+      source,
+      haystack: [title, source, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
+    };
+  }),
+  ...photos.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+    const title = p.data.title ?? 'Untitled';
+    return {
+      type: 'photo',
+      href: `/photo/${p.id}/`,
+      title,
+      date: p.data.date.toISOString().slice(0, 10),
+      tags: p.data.tags,
+      excerpt: p.data.alt ?? '',
+      haystack: [title, p.data.alt ?? '', p.data.tags.join(' ')].join(' ').toLowerCase(),
+    };
+  }),
+].sort((a, b) => b.date.localeCompare(a.date));
+---
+
+<BaseLayout title="search — stash" activeNav="search">
+  <div class="search-box">
+    <span class="search-icon">⌕</span>
+    <input
+      id="q"
+      type="search"
+      placeholder="search fragments…"
+      autocomplete="off"
+      autofocus
+    />
+    <span class="search-hint">
+      <span id="count">{index.length}</span>
+    </span>
+  </div>
+
+  <main class="stream" id="results"></main>
+
+  <p class="empty" id="empty" hidden>no fragments match.</p>
+
+  <script is:inline type="application/json" id="index-data" set:html={JSON.stringify(index)} />
+</BaseLayout>
+
+<script>
+  type Entry = {
+    type: 'note' | 'reading' | 'photo';
+    href: string;
+    title: string;
+    date: string;
+    tags: string[];
+    excerpt: string;
+    source?: string;
+    haystack: string;
+  };
+
+  const raw = document.getElementById('index-data')?.textContent ?? '[]';
+  const entries: Entry[] = JSON.parse(raw);
+  const input = document.getElementById('q') as HTMLInputElement;
+  const results = document.getElementById('results')!;
+  const count = document.getElementById('count')!;
+  const empty = document.getElementById('empty')!;
+
+  function escapeHtml(s: string): string {
+    return s.replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!),
+    );
+  }
+
+  function render(list: Entry[]): void {
+    if (list.length === 0) {
+      results.innerHTML = '';
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+    results.innerHTML = list
+      .map((e) => {
+        const meta = e.type === 'reading' && e.source
+          ? `<span class="source">${escapeHtml(e.source)}</span>`
+          : e.tags.length
+            ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
+            : '';
+        const body = e.excerpt
+          ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>`
+          : '';
+        return `
+          <a href="${e.href}" class="item">
+            <div class="meta">
+              <div class="meta-left">
+                <span class="type type-${e.type}">${e.type}</span>
+                ${meta}
+              </div>
+              <time>${e.date}</time>
+            </div>
+            <h2 class="title">${escapeHtml(e.title)}</h2>
+            ${body}
+          </a>
+        `;
+      })
+      .join('');
+  }
+
+  function filter(q: string): Entry[] {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return entries;
+    const tokens = needle.split(/\s+/);
+    return entries.filter((e) => tokens.every((t) => e.haystack.includes(t)));
+  }
+
+  function update(): void {
+    const list = filter(input.value);
+    count.textContent = String(list.length);
+    render(list);
+  }
+
+  input.addEventListener('input', update);
+  update();
+</script>
+
+<style>
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    margin-bottom: 28px;
+  }
+  .search-icon {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--faint);
+  }
+  #q {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  #q::placeholder {
+    color: var(--faint);
+  }
+  .search-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faintest);
+  }
+  .stream {
+    border-bottom: 1px solid var(--hairline);
+  }
+  .stream:empty {
+    border-bottom: none;
+  }
+  .empty {
+    padding: 48px 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+  }
+
+  .stream :global(.item) {
+    display: block;
+    padding: 24px 0;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink);
+  }
+  .stream :global(.item:hover) {
+    background: rgba(255, 255, 255, 0.5);
+  }
+  .stream :global(.meta) {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .stream :global(.meta-left) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .stream :global(.type) {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .stream :global(.type-note) { color: var(--note); }
+  .stream :global(.type-reading) { color: var(--reading); }
+  .stream :global(.type-photo) { color: var(--photo); }
+  .stream :global(.tags),
+  .stream :global(time) {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .stream :global(.source) {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .stream :global(.title) {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .stream :global(.excerpt) {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+</style>

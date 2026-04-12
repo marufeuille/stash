@@ -8,8 +8,7 @@ export async function getStaticPaths() {
   const readings = await getCollection('reading');
   const notes = await getCollection('note');
 
-  const allPosts = [...photos, ...readings, ...notes]
-    .filter((post) => !post.data.draft);
+  const allPosts = [...photos, ...readings, ...notes].filter((post) => !post.data.draft);
 
   return allPosts.map((post) => ({
     params: { type: post.data.type, slug: post.id },
@@ -20,47 +19,39 @@ export async function getStaticPaths() {
 const { post } = Astro.props;
 const { Content } = await render(post);
 const dateStr = post.data.date.toISOString().slice(0, 10);
-const displayTitle = post.data.title || (post.data.type === 'reading' ? post.data.book : 'Untitled');
+const displayTitle =
+  post.data.title || (post.data.type === 'reading' ? post.data.book : 'Untitled');
+const activeNav = post.data.type as 'note' | 'reading' | 'photo';
 ---
 
-<BaseLayout title={`${displayTitle} - stash`}>
+<BaseLayout title={`${displayTitle} — stash`} activeNav={activeNav}>
   <article class="detail">
-    <header class="detail-header">
-      <span class={`detail-type detail-type-${post.data.type}`}>{post.data.type}</span>
+    <div class="meta">
+      <span class={`type type-${post.data.type}`}>{post.data.type}</span>
       <time datetime={dateStr}>{dateStr}</time>
-      <h1 class="detail-title">{displayTitle}</h1>
+    </div>
 
-      {post.data.type === 'photo' && (
-        <div class="detail-photo">
-          <Image src={post.data.image} alt={post.data.alt} format="webp" />
-        </div>
-      )}
+    <h1 class="title">{displayTitle}</h1>
 
-      {post.data.type === 'reading' && (
-        <div class="detail-meta detail-reading-meta">
-          <dl>
-            <dt>Book</dt>
-            <dd>{post.data.book}</dd>
-            <dt>Author</dt>
-            <dd>{post.data.author}</dd>
-            {post.data.progress && (
-              <>
-                <dt>Progress</dt>
-                <dd>{post.data.progress}</dd>
-              </>
-            )}
-          </dl>
-        </div>
-      )}
+    {post.data.type === 'reading' && (
+      <div class="source">
+        <span class="book">{post.data.book}</span>
+        <span class="author"> — {post.data.author}</span>
+        {post.data.progress && <span class="progress">{post.data.progress}</span>}
+      </div>
+    )}
 
-      {post.data.tags.length > 0 && (
-        <ul class="detail-tags">
-          {post.data.tags.map((tag: string) => <li>{tag}</li>)}
-        </ul>
-      )}
-    </header>
+    {post.data.type === 'photo' && (
+      <div class="photo">
+        <Image src={post.data.image} alt={post.data.alt} format="webp" />
+      </div>
+    )}
 
-    <div class="detail-body">
+    {post.data.tags.length > 0 && (
+      <div class="tags">{post.data.tags.join('  ')}</div>
+    )}
+
+    <div class="body">
       <Content />
     </div>
   </article>
@@ -68,111 +59,117 @@ const displayTitle = post.data.title || (post.data.type === 'reading' ? post.dat
 
 <style>
   .detail {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 32px 16px;
+    padding-top: 8px;
   }
-  .detail-header {
-    margin-bottom: 32px;
+  .meta {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    margin-bottom: 12px;
   }
-  .detail-type {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-right: 8px;
+  .type {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
   }
-  .detail-type-photo {
-    background: #e67e22;
-  }
-  .detail-type-reading {
-    background: #3498db;
-  }
-  .detail-type-note {
-    background: #2ecc71;
-  }
+  .type-note { color: var(--note); }
+  .type-reading { color: var(--reading); }
+  .type-photo { color: var(--photo); }
   time {
-    font-size: 0.85rem;
-    color: #888;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
   }
-  .detail-title {
-    margin: 12px 0 16px;
-    font-size: 1.6rem;
-    line-height: 1.4;
+  .title {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin-bottom: 16px;
   }
-  .detail-photo {
-    margin: 16px 0;
+  .source {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 12px;
   }
-  .detail-photo img {
+  .source .author { color: var(--faint); }
+  .source .progress {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin-left: 8px;
+  }
+  .photo {
+    margin: 20px 0;
+  }
+  .photo :global(img) {
     width: 100%;
     height: auto;
-    border-radius: 8px;
+    display: block;
+    border-radius: 2px;
   }
-  .detail-meta dl {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 4px 12px;
-    font-size: 0.9rem;
-    margin: 16px 0;
+  .tags {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin-bottom: 28px;
   }
-  .detail-meta dt {
+  .body {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--ink-soft);
+  }
+  .body :global(p) { margin: 14px 0; }
+  .body :global(h2) {
+    margin: 28px 0 12px;
+    font-size: 18px;
     font-weight: 600;
-    color: #555;
+    color: var(--ink);
   }
-  .detail-meta dd {
-    margin: 0;
-  }
-  .detail-tags {
-    display: flex;
-    gap: 6px;
-    list-style: none;
-    flex-wrap: wrap;
-    margin: 12px 0 0;
-  }
-  .detail-tags li {
-    font-size: 0.75rem;
-    background: #f0f0f0;
-    color: #555;
-    padding: 2px 8px;
-    border-radius: 4px;
-  }
-  .detail-body {
-    font-size: 1rem;
-    line-height: 1.8;
-    color: #444;
-  }
-  .detail-body :global(p) {
-    margin: 16px 0;
-  }
-  .detail-body :global(h2) {
-    margin: 24px 0 12px;
-    font-size: 1.3rem;
-  }
-  .detail-body :global(h3) {
+  .body :global(h3) {
     margin: 20px 0 8px;
-    font-size: 1.1rem;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
   }
-  .detail-body :global(img) {
+  .body :global(img) {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 2px;
   }
-  .detail-body :global(blockquote) {
-    border-left: 3px solid #ddd;
+  .body :global(blockquote) {
+    border-left: 2px solid var(--hairline);
     margin: 16px 0;
-    padding: 8px 16px;
-    color: #666;
+    padding: 4px 16px;
+    color: var(--muted);
+    font-style: italic;
   }
-
-  @media (max-width: 600px) {
-    .detail {
-      padding: 24px 12px;
-    }
-    .detail-title {
-      font-size: 1.3rem;
-    }
+  .body :global(code) {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface);
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+  .body :global(pre) {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    padding: 14px 16px;
+    overflow-x: auto;
+  }
+  .body :global(pre code) {
+    background: transparent;
+    padding: 0;
+  }
+  .body :global(a) {
+    color: var(--ink);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .body :global(a:hover) {
+    border-bottom-color: var(--ink);
   }
 </style>

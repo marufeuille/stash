@@ -6,7 +6,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "check": "astro check",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync-content": "node scripts/sync-content.mjs",
+    "build:ci": "npm run sync-content && astro build"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,29 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import StreamItem from '../../components/StreamItem.astro';
+
+const posts = (await getCollection('photo'))
+  .filter((p) => !p.data.draft)
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+---
+
+<BaseLayout title="photo — stash" activeNav="photo">
+  <main class="stream">
+    {posts.map((post) => (
+      <StreamItem
+        type="photo"
+        href={`/photo/${post.id}/`}
+        title={post.data.title ?? 'Untitled'}
+        date={post.data.date}
+        tags={post.data.tags}
+        image={post.data.image}
+        alt={post.data.alt}
+      />
+    ))}
+  </main>
+</BaseLayout>
+
+<style>
+  .stream { border-bottom: 1px solid var(--hairline); }
+</style>

@@ -1,0 +1,141 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  type: 'note' | 'reading' | 'photo';
+  href: string;
+  title: string;
+  date: Date;
+  tags: string[];
+  excerpt?: string;
+  book?: string;
+  author?: string;
+  progress?: string;
+  image?: ImageMetadata;
+  alt?: string;
+}
+
+const { type, href, title, date, tags, excerpt, book, author, progress, image, alt } = Astro.props;
+const dateStr = date.toISOString().slice(0, 10);
+---
+
+<a href={href} class="item">
+  <div class="meta">
+    <div class="meta-left">
+      <span class={`type type-${type}`}>{type}</span>
+      {type === 'reading' && book && (
+        <span class="source">
+          {book}
+          {author && <span class="author"> — {author}</span>}
+          {progress && <span class="progress">{progress}</span>}
+        </span>
+      )}
+      {tags.length > 0 && type !== 'reading' && (
+        <span class="tags">{tags.join('  ')}</span>
+      )}
+    </div>
+    <time datetime={dateStr}>{dateStr}</time>
+  </div>
+
+  <h2 class="title">{title}</h2>
+
+  {type === 'photo' && image && (
+    <div class="thumb">
+      <Image src={image} alt={alt ?? title} width={720} height={405} format="webp" loading="lazy" />
+    </div>
+  )}
+
+  {excerpt && <p class="excerpt">{excerpt}</p>}
+
+  {type === 'reading' && tags.length > 0 && (
+    <span class="tags tags-trail">{tags.join('  ')}</span>
+  )}
+</a>
+
+<style>
+  .item {
+    display: block;
+    padding: 28px 0;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink);
+    text-decoration: none;
+    transition: background 0.15s ease;
+  }
+  .item, .item * { text-decoration: none; }
+  .item:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+  .meta-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+  }
+  .type {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .type-note { color: var(--note); }
+  .type-reading { color: var(--reading); }
+  .type-photo { color: var(--photo); }
+  .source {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .author { color: var(--faint); }
+  .progress {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin-left: 6px;
+  }
+  .tags {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .tags-trail {
+    display: inline-block;
+    margin-top: 8px;
+  }
+  time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    flex-shrink: 0;
+  }
+  .title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .thumb {
+    margin-top: 14px;
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .thumb :global(img) {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .excerpt {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+</style>
