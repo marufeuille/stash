@@ -12,9 +12,29 @@ export function getStaticPaths() {
 const { type } = Astro.params as { type: 'note' | 'reading' | 'photo' };
 
 const templates = {
-  note: 'type: note\ndate: {{date}}\ntags: []\ndraft: true\n',
-  reading: 'type: reading\ndate: {{date}}\nbook: ""\nauthor: ""\ntags: []\ndraft: true\n',
-  photo: 'type: photo\ndate: {{date}}\nimage: ""\nalt: ""\ntags: []\ndraft: true\n',
+  note:
+    'type: note\n' +
+    'title: ""\n' +
+    'date: {{date}}\n' +
+    'tags: []\n' +
+    'draft: true\n',
+  reading:
+    'type: reading\n' +
+    'title: ""\n' +
+    'date: {{date}}\n' +
+    'book: ""\n' +
+    'author: ""\n' +
+    'progress: ""\n' +
+    'tags: []\n' +
+    'draft: true\n',
+  photo:
+    'type: photo\n' +
+    'title: ""\n' +
+    'date: {{date}}\n' +
+    'image: ""\n' +
+    'alt: ""\n' +
+    'tags: []\n' +
+    'draft: true\n',
 };
 
 const template = templates[type];

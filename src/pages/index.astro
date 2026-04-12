@@ -34,10 +34,16 @@ const allPosts = [...photos, ...readings, ...notes]
         var name =
           d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
           '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
+        var dateStr =
+          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
         var content =
-          '---\ntype: note\ndate: ' +
-          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-          '\ntags: []\ndraft: true\n---\n\n';
+          '---\n' +
+          'type: note\n' +
+          'title: ""\n' +
+          'date: ' + dateStr + '\n' +
+          'tags: []\n' +
+          'draft: true\n' +
+          '---\n\n';
         return 'obsidian://new?vault=stash&file=' +
           encodeURIComponent('note/' + name) +
           '&content=' + encodeURIComponent(content);
