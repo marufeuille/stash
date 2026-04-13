@@ -1,0 +1,89 @@
+---
+import { getEntry, render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const entry = await getEntry('meta', 'about');
+const Content = entry ? (await render(entry)).Content : null;
+const title = entry?.data.title ?? 'about';
+---
+
+<BaseLayout title={`about — stash`}>
+  <article class="about">
+    <div class="meta">
+      <span class="type">about</span>
+    </div>
+    <h1 class="title">{title}</h1>
+    <div class="body">
+      {Content ? <Content /> : <p class="empty">about.md がvaultにまだありません。</p>}
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .about {
+    padding-top: 8px;
+  }
+  .meta {
+    margin-bottom: 12px;
+  }
+  .type {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  .title {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin-bottom: 24px;
+  }
+  .body {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--ink-soft);
+  }
+  .body :global(p) { margin: 14px 0; }
+  .body :global(h2) {
+    margin: 28px 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .body :global(h3) {
+    margin: 20px 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .body :global(blockquote) {
+    border-left: 2px solid var(--hairline);
+    margin: 16px 0;
+    padding: 4px 16px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .body :global(a) {
+    color: var(--ink);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .body :global(a:hover) {
+    border-bottom-color: var(--ink);
+  }
+  .body :global(code) {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface);
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+  .empty {
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+</style>

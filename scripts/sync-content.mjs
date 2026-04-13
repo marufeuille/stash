@@ -9,6 +9,9 @@ const REPO = process.env.STASH_VAULT_REPO;
 const TOKEN = process.env.STASH_VAULT_TOKEN;
 const BRANCH = process.env.STASH_VAULT_BRANCH || 'main';
 
+const SUBDIRS = ['note', 'reading', 'photo', 'attachments'];
+const ROOT_FILES = [{ from: 'about.md', to: 'meta/about.md' }];
+
 function run(cmd) {
   execSync(cmd, { stdio: 'inherit' });
 }
@@ -16,6 +19,23 @@ function run(cmd) {
 function cleanContent() {
   if (existsSync(CONTENT_DIR)) rmSync(CONTENT_DIR, { recursive: true, force: true });
   mkdirSync(CONTENT_DIR, { recursive: true });
+}
+
+function syncFrom(src) {
+  for (const sub of SUBDIRS) {
+    const from = resolve(src, sub);
+    if (existsSync(from)) {
+      cpSync(from, resolve(CONTENT_DIR, sub), { recursive: true });
+    }
+  }
+  for (const { from, to } of ROOT_FILES) {
+    const fromPath = resolve(src, from);
+    if (existsSync(fromPath)) {
+      const toPath = resolve(CONTENT_DIR, to);
+      mkdirSync(resolve(toPath, '..'), { recursive: true });
+      cpSync(fromPath, toPath);
+    }
+  }
 }
 
 if (LOCAL_VAULT) {
@@ -30,12 +50,7 @@ if (LOCAL_VAULT) {
   }
   console.log(`Syncing content from local vault: ${src}`);
   cleanContent();
-  for (const sub of ['note', 'reading', 'photo', 'attachments']) {
-    const from = resolve(src, sub);
-    if (existsSync(from)) {
-      cpSync(from, resolve(CONTENT_DIR, sub), { recursive: true });
-    }
-  }
+  syncFrom(src);
   console.log('Content synced from local vault.');
   process.exit(0);
 }
@@ -59,11 +74,6 @@ if (existsSync(TMP)) rmSync(TMP, { recursive: true, force: true });
 run(`git clone --depth=1 --branch=${BRANCH} ${url} ${TMP}`);
 
 cleanContent();
-for (const sub of ['note', 'reading', 'photo', 'attachments']) {
-  const from = resolve(TMP, sub);
-  if (existsSync(from)) {
-    cpSync(from, resolve(CONTENT_DIR, sub), { recursive: true });
-  }
-}
+syncFrom(TMP);
 rmSync(TMP, { recursive: true, force: true });
 console.log('Content synced from vault repo.');

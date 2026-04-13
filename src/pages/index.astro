@@ -29,7 +29,16 @@ const allPosts = [...photos, ...readings, ...notes]
       }
       var isOwner = localStorage.getItem('stashOwner') === '1';
       if (!isOwner) {
-        el.addEventListener('click', function (e) { e.preventDefault(); });
+        el.addEventListener('click', function (e) {
+          e.preventDefault();
+          location.href = '/about';
+        });
+        document.addEventListener('keydown', function (e) {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+            e.preventDefault();
+            location.href = '/about';
+          }
+        });
         return;
       }
       el.removeAttribute('aria-disabled');

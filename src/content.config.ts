@@ -40,4 +40,11 @@ const note = defineCollection({
   }),
 });
 
-export const collections = { photo, reading, note };
+const meta = defineCollection({
+  loader: glob({ pattern: '*.md', base: './content/meta' }),
+  schema: z.object({
+    title: z.string().optional(),
+  }),
+});
+
+export const collections = { photo, reading, note, meta };
