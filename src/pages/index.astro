@@ -119,6 +119,9 @@ const allPosts = [...photos, ...readings, ...notes]
     color: inherit;
     transition: border-color 0.15s ease;
   }
+  .capture[hidden] {
+    display: none;
+  }
   .capture:hover {
     border-color: var(--faint);
   }
