@@ -14,20 +14,27 @@ const allPosts = [...photos, ...readings, ...notes]
 ---
 
 <BaseLayout title="stash" activeNav="all">
-  <a id="capture" class="capture" href="#" hidden>
+  <a id="capture" class="capture" href="#" aria-disabled="true" tabindex="-1">
     <span class="capture-prompt">+ stash a fragment…</span>
     <span class="capture-hint">⌘N</span>
   </a>
   <script is:inline>
     (function () {
+      var el = document.getElementById('capture');
+      if (!el) return;
       var params = new URLSearchParams(location.search);
       if (params.get('own') === '1') {
         localStorage.setItem('stashOwner', '1');
         history.replaceState(null, '', location.pathname);
       }
-      if (localStorage.getItem('stashOwner') !== '1') return;
-      var el = document.getElementById('capture');
-      if (!el) return;
+      var isOwner = localStorage.getItem('stashOwner') === '1';
+      if (!isOwner) {
+        el.addEventListener('click', function (e) { e.preventDefault(); });
+        return;
+      }
+      el.removeAttribute('aria-disabled');
+      el.removeAttribute('tabindex');
+      el.classList.add('is-active');
       function pad(n) { return String(n).padStart(2, '0'); }
       function buildHref() {
         var d = new Date();
@@ -48,7 +55,6 @@ const allPosts = [...photos, ...readings, ...notes]
           encodeURIComponent('note/' + name) +
           '&content=' + encodeURIComponent(content);
       }
-      el.hidden = false;
       el.addEventListener('click', function (e) {
         el.href = buildHref();
       });
@@ -119,10 +125,10 @@ const allPosts = [...photos, ...readings, ...notes]
     color: inherit;
     transition: border-color 0.15s ease;
   }
-  .capture[hidden] {
-    display: none;
+  .capture[aria-disabled='true'] {
+    cursor: default;
   }
-  .capture:hover {
+  .capture.is-active:hover {
     border-color: var(--faint);
   }
   .capture-prompt {
