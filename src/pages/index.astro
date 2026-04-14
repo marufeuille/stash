@@ -25,16 +25,16 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
 ---
 
 <BaseLayout title="stash" activeNav="all">
+  <a id="capture" class="capture" href="#" aria-disabled="true" tabindex="-1">
+    <span class="capture-prompt">+ stash a fragment…</span>
+    <span class="capture-hint">⌘N</span>
+  </a>
   {recentSummary?.text && (
     <aside class="recent-summary" aria-label="recent summary">
       <span class="recent-summary-label">lately</span>
       <p class="recent-summary-text">{recentSummary.text}</p>
     </aside>
   )}
-  <a id="capture" class="capture" href="#" aria-disabled="true" tabindex="-1">
-    <span class="capture-prompt">+ stash a fragment…</span>
-    <span class="capture-hint">⌘N</span>
-  </a>
 
   <div id="about-overlay" class="overlay" hidden aria-hidden="true">
     <div class="overlay-backdrop" data-close></div>
@@ -180,9 +180,7 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
     display: flex;
     align-items: baseline;
     gap: 12px;
-    padding: 14px 2px 18px;
-    margin-bottom: 10px;
-    border-bottom: 1px dashed var(--hairline);
+    padding: 4px 2px 18px;
   }
   .recent-summary-label {
     font-family: var(--mono);
