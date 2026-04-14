@@ -7,6 +7,8 @@ interface Props {
 
 const { title, description = 'stash — 断片のための場所', activeNav = 'all' } = Astro.props;
 
+const cfBeaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN;
+
 const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: string }[] = [
   { key: 'all', label: 'all', href: '/' },
   { key: 'note', label: 'note', href: '/note/' },
@@ -32,6 +34,13 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    {cfBeaconToken && (
+      <script
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon={`{"token": "${cfBeaconToken}"}`}
+      />
+    )}
   </head>
   <body>
     <div class="shell">
