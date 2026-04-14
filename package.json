@@ -8,7 +8,8 @@
     "check": "astro check",
     "test": "vitest run",
     "sync-content": "node scripts/sync-content.mjs",
-    "build:ci": "npm run sync-content && rm -rf dist .astro && astro build"
+    "generate-summary": "node scripts/generate-recent-summary.mjs",
+    "build:ci": "npm run sync-content && npm run generate-summary && rm -rf dist .astro && astro build"
   },
   "keywords": [],
   "author": "",

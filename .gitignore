@@ -7,3 +7,4 @@ dist/
 # For local dev: set STASH_VAULT_PATH=/path/to/local/vault, then `npm run sync-content`
 content/
 tmp/
+src/data/recent-summary.json
