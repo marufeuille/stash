@@ -5,14 +5,40 @@ import matter from 'gray-matter';
 
 const CONTENT_DIR = resolve('content');
 const OUT_PATH = resolve('src/data/recent-summary.json');
-const DAYS = 14;
-const SUBDIRS = ['note', 'reading', 'photo'];
 const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const API_TOKEN = process.env.CLOUDFLARE_AI_API_TOKEN;
 
-const EMPTY_FALLBACK = 'このところ、なにも考えていないようです。';
+const SCOPES = [
+  {
+    key: 'all',
+    subdirs: ['note', 'reading', 'photo'],
+    mode: 'days',
+    value: 14,
+    emptyText: 'このところ、なにも考えていないようです。',
+    systemPrompt:
+      '与えられた直近のメモ群を元に、「最近このサイトの主はこういうことを考えているようです」という第三者視点の観察を日本語で1〜2文、最大80字で書いてください。断定を避け、「〜のよう」「〜らしい」などの柔らかい語尾を使ってください。箇条書き禁止、前置き禁止、本文のみ。',
+  },
+  {
+    key: 'note',
+    subdirs: ['note'],
+    mode: 'count',
+    value: 5,
+    emptyText: 'まだ何も書き留めていないようです。',
+    systemPrompt:
+      '与えられた直近のnote群を元に、「最近このサイトの主がnoteに書き留めているテーマ」を第三者視点で日本語1〜2文、最大80字で書いてください。断定を避け柔らかい語尾。箇条書き禁止、前置き禁止、本文のみ。',
+  },
+  {
+    key: 'reading',
+    subdirs: ['reading'],
+    mode: 'count',
+    value: 5,
+    emptyText: 'まだ何も読んでいないようです。',
+    systemPrompt:
+      '与えられた直近のreading(読書メモ)群を元に、「最近このサイトの主が読んでいるものの傾向」を第三者視点で日本語1〜2文、最大80字で書いてください。断定を避け柔らかい語尾。箇条書き禁止、前置き禁止、本文のみ。',
+  },
+];
 
 function walkMd(dir) {
   const out = [];
@@ -26,16 +52,15 @@ function walkMd(dir) {
   return out;
 }
 
-function collectRecent() {
-  const cutoff = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000);
+function collectAll(subdirs) {
   const items = [];
-  for (const sub of SUBDIRS) {
+  for (const sub of subdirs) {
     for (const f of walkMd(join(CONTENT_DIR, sub))) {
       const raw = readFileSync(f, 'utf8');
       const { data, content } = matter(raw);
       if (data.draft) continue;
       const date = data.date ? new Date(data.date) : null;
-      if (!date || isNaN(date.getTime()) || date < cutoff) continue;
+      if (!date || isNaN(date.getTime())) continue;
       items.push({
         type: sub,
         title: data.title || data.book || '',
@@ -48,16 +73,25 @@ function collectRecent() {
   return items;
 }
 
-function buildPrompt(items) {
-  const lines = items.map((it, i) => {
-    const d = it.date.toISOString().slice(0, 10);
-    return `[${i + 1}] (${it.type}, ${d}) ${it.title}\n${it.body}`;
-  });
-  return lines.join('\n\n---\n\n');
+function selectForScope(scope) {
+  const all = collectAll(scope.subdirs);
+  if (scope.mode === 'days') {
+    const cutoff = new Date(Date.now() - scope.value * 24 * 60 * 60 * 1000);
+    return all.filter((it) => it.date >= cutoff);
+  }
+  return all.slice(0, scope.value);
 }
 
-async function summarize(items) {
-  const userBody = buildPrompt(items);
+function buildPrompt(items) {
+  return items
+    .map((it, i) => {
+      const d = it.date.toISOString().slice(0, 10);
+      return `[${i + 1}] (${it.type}, ${d}) ${it.title}\n${it.body}`;
+    })
+    .join('\n\n---\n\n');
+}
+
+async function summarize(systemPrompt, items) {
   const res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${MODEL}`,
     {
@@ -68,51 +102,39 @@ async function summarize(items) {
       },
       body: JSON.stringify({
         messages: [
-          {
-            role: 'system',
-            content:
-              '与えられた直近のメモ群を元に、「最近このサイトの主はこういうことを考えているようです」という第三者視点の観察を日本語で1〜2文、最大80字で書いてください。断定を避け、「〜のよう」「〜らしい」などの柔らかい語尾を使ってください。箇条書き禁止、前置き禁止、本文のみ。',
-          },
-          { role: 'user', content: userBody },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: buildPrompt(items) },
         ],
       }),
     },
   );
-  if (!res.ok) {
-    throw new Error(`Workers AI error ${res.status}: ${await res.text()}`);
-  }
+  if (!res.ok) throw new Error(`Workers AI error ${res.status}: ${await res.text()}`);
   const json = await res.json();
   const text = json?.result?.response;
   if (!text) throw new Error(`unexpected response: ${JSON.stringify(json)}`);
   return text.trim();
 }
 
-function writeOut(payload) {
-  mkdirSync(resolve('src/data'), { recursive: true });
-  writeFileSync(OUT_PATH, JSON.stringify(payload, null, 2) + '\n');
+async function runScope(scope) {
+  const items = selectForScope(scope);
+  console.log(`[${scope.key}] ${items.length} items`);
+  if (items.length === 0) return { text: scope.emptyText, count: 0 };
+  if (!ACCOUNT_ID || !API_TOKEN) return { text: null, count: items.length };
+  try {
+    const text = await summarize(scope.systemPrompt, items);
+    console.log(`[${scope.key}] ${text}`);
+    return { text, count: items.length };
+  } catch (err) {
+    console.error(`[${scope.key}] failed:`, err);
+    return { text: null, count: items.length, error: String(err) };
+  }
 }
 
-const items = collectRecent();
-console.log(`Found ${items.length} recent items (last ${DAYS} days).`);
-
-if (items.length === 0) {
-  writeOut({ text: EMPTY_FALLBACK, count: 0, generatedAt: new Date().toISOString() });
-  console.log('Wrote fallback summary.');
-  process.exit(0);
+const payload = { generatedAt: new Date().toISOString() };
+for (const scope of SCOPES) {
+  payload[scope.key] = await runScope(scope);
 }
 
-if (!ACCOUNT_ID || !API_TOKEN) {
-  console.warn('CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_AI_API_TOKEN not set — skipping AI call.');
-  writeOut({ text: null, count: items.length, generatedAt: new Date().toISOString() });
-  process.exit(0);
-}
-
-try {
-  const text = await summarize(items);
-  writeOut({ text, count: items.length, generatedAt: new Date().toISOString() });
-  console.log(`Summary: ${text}`);
-} catch (err) {
-  console.error('Failed to generate summary:', err);
-  writeOut({ text: null, count: items.length, generatedAt: new Date().toISOString(), error: String(err) });
-  process.exit(0);
-}
+mkdirSync(resolve('src/data'), { recursive: true });
+writeFileSync(OUT_PATH, JSON.stringify(payload, null, 2) + '\n');
+console.log('Wrote', OUT_PATH);

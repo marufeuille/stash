@@ -1,0 +1,52 @@
+---
+interface Props {
+  scope: 'all' | 'note' | 'reading';
+}
+const { scope } = Astro.props;
+
+let summary: { text: string | null; count: number } | null = null;
+try {
+  const data = (await import('../data/recent-summary.json')).default as Record<
+    string,
+    { text: string | null; count: number }
+  >;
+  summary = data[scope] ?? null;
+} catch {
+  summary = null;
+}
+---
+
+{summary?.text && (
+  <aside class="recent-summary" aria-label="recent summary">
+    <span class="recent-summary-label">lately</span>
+    <p class="recent-summary-text">{summary.text}</p>
+  </aside>
+)}
+
+<style>
+  .recent-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 4px 2px 18px;
+  }
+  .recent-summary-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+    flex-shrink: 0;
+  }
+  .recent-summary-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+  @media (max-width: 600px) {
+    .recent-summary {
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
+</style>

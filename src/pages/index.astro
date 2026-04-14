@@ -3,13 +3,7 @@ import { getCollection, getEntry, render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import StreamItem from '../components/StreamItem.astro';
 import { excerpt } from '../lib/excerpt';
-
-let recentSummary: { text: string | null; count: number } | null = null;
-try {
-  recentSummary = (await import('../data/recent-summary.json')).default;
-} catch {
-  recentSummary = null;
-}
+import RecentSummary from '../components/RecentSummary.astro';
 
 const photos = await getCollection('photo');
 const readings = await getCollection('reading');
@@ -29,12 +23,7 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
     <span class="capture-prompt">+ stash a fragment…</span>
     <span class="capture-hint">⌘N</span>
   </a>
-  {recentSummary?.text && (
-    <aside class="recent-summary" aria-label="recent summary">
-      <span class="recent-summary-label">lately</span>
-      <p class="recent-summary-text">{recentSummary.text}</p>
-    </aside>
-  )}
+  <RecentSummary scope="all" />
 
   <div id="about-overlay" class="overlay" hidden aria-hidden="true">
     <div class="overlay-backdrop" data-close></div>
@@ -176,31 +165,6 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
 </BaseLayout>
 
 <style>
-  .recent-summary {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    padding: 4px 2px 18px;
-  }
-  .recent-summary-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--faint);
-    flex-shrink: 0;
-  }
-  .recent-summary-text {
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--muted);
-  }
-  @media (max-width: 600px) {
-    .recent-summary {
-      flex-direction: column;
-      gap: 4px;
-    }
-  }
   .capture {
     display: flex;
     align-items: center;

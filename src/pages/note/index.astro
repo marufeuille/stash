@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import StreamItem from '../../components/StreamItem.astro';
+import RecentSummary from '../../components/RecentSummary.astro';
 import { excerpt } from '../../lib/excerpt';
 
 const posts = (await getCollection('note'))
@@ -10,6 +11,7 @@ const posts = (await getCollection('note'))
 ---
 
 <BaseLayout title="note — stash" activeNav="note">
+  <RecentSummary scope="note" />
   <main class="stream">
     {posts.map((post) => (
       <StreamItem
