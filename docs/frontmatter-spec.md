@@ -1,6 +1,6 @@
 # Front Matter 仕様
 
-投稿は **photo**・**reading**・**note** の3タイプで構成される。
+投稿は **photo**・**reading**・**note**・**link** の4タイプで構成される。
 すべての投稿は Markdown ファイルの YAML front matter でメタデータを持つ。
 
 ---
@@ -105,4 +105,37 @@ tags:
   - 雑記
 draft: false
 ---
+```
+
+---
+
+## link タイプ
+
+外部 URL を一言コメントとともに残すタイプ。本文（Markdown）は任意で、なぜ保存したかや感想を書ける。
+
+### 固有フィールド
+
+| フィールド | 型       | 必須 | 説明                                                         |
+| ---------- | -------- | ---- | ------------------------------------------------------------ |
+| `url`      | `string` | ✅   | 外部 URL（`http(s)://` で始まる）                            |
+| `quote`    | `string` | ❌   | URL から引用したい一節                                       |
+
+サイト名は `url` のホスト名から自動で抽出して表示する（`example.com` 等）。
+
+### YAML 例
+
+```yaml
+---
+type: link
+title: Astro 5.0 released
+date: 2026-04-16
+url: https://astro.build/blog/astro-5/
+quote: The new content layer transforms how Astro handles content.
+tags:
+  - astro
+  - frontend
+draft: false
+---
+
+なぜ気になったか、関連する自分の考えを書く。本文は任意。
 ```

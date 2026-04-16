@@ -6,9 +6,10 @@ import { excerpt } from '../lib/excerpt';
 const photos = await getCollection('photo');
 const readings = await getCollection('reading');
 const notes = await getCollection('note');
+const links = await getCollection('link');
 
 type IndexEntry = {
-  type: 'note' | 'reading' | 'photo';
+  type: 'note' | 'reading' | 'photo' | 'link';
   href: string;
   title: string;
   date: string;
@@ -59,6 +60,22 @@ const index: IndexEntry[] = [
       haystack: [title, p.data.alt ?? '', p.data.tags.join(' ')].join(' ').toLowerCase(),
     };
   }),
+  ...links.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+    let host = '';
+    try { host = new URL(p.data.url).hostname.replace(/^www\./, ''); } catch {}
+    const title = p.data.title ?? (host || 'Untitled');
+    const ex = p.data.quote ?? excerpt(p.body, 140);
+    return {
+      type: 'link',
+      href: `/link/${p.id}/`,
+      title,
+      date: p.data.date.toISOString().slice(0, 10),
+      tags: p.data.tags,
+      excerpt: ex,
+      source: host,
+      haystack: [title, host, p.data.url, p.data.quote ?? '', ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
+    };
+  }),
 ].sort((a, b) => b.date.localeCompare(a.date));
 ---
 
@@ -86,7 +103,7 @@ const index: IndexEntry[] = [
 
 <script>
   type Entry = {
-    type: 'note' | 'reading' | 'photo';
+    type: 'note' | 'reading' | 'photo' | 'link';
     href: string;
     title: string;
     date: string;
@@ -118,7 +135,7 @@ const index: IndexEntry[] = [
     empty.hidden = true;
     results.innerHTML = list
       .map((e) => {
-        const meta = e.type === 'reading' && e.source
+        const meta = (e.type === 'reading' || e.type === 'link') && e.source
           ? `<span class="source">${escapeHtml(e.source)}</span>`
           : e.tags.length
             ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
@@ -237,6 +254,7 @@ const index: IndexEntry[] = [
   .stream :global(.type-note) { color: var(--note); }
   .stream :global(.type-reading) { color: var(--reading); }
   .stream :global(.type-photo) { color: var(--photo); }
+  .stream :global(.type-link) { color: var(--link); }
   .stream :global(.tags),
   .stream :global(time) {
     font-family: var(--mono);
