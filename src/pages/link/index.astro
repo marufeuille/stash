@@ -1,0 +1,35 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import StreamItem from '../../components/StreamItem.astro';
+import { excerpt } from '../../lib/excerpt';
+
+const posts = (await getCollection('link'))
+  .filter((p) => !p.data.draft)
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+---
+
+<BaseLayout title="link — stash" activeNav="link">
+  <main class="stream">
+    {posts.map((post) => {
+      let host = '';
+      try { host = new URL(post.data.url).hostname.replace(/^www\./, ''); } catch {}
+      return (
+        <StreamItem
+          type="link"
+          href={`/link/${post.id}/`}
+          title={post.data.title ?? (host || 'Untitled')}
+          date={post.data.date}
+          tags={post.data.tags}
+          url={post.data.url}
+          quote={post.data.quote}
+          excerpt={excerpt(post.body)}
+        />
+      );
+    })}
+  </main>
+</BaseLayout>
+
+<style>
+  .stream { border-bottom: 1px solid var(--hairline); }
+</style>

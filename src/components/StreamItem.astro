@@ -3,7 +3,7 @@ import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 
 interface Props {
-  type: 'note' | 'reading' | 'photo';
+  type: 'note' | 'reading' | 'photo' | 'link';
   href: string;
   title: string;
   date: Date;
@@ -14,10 +14,16 @@ interface Props {
   progress?: string;
   image?: ImageMetadata;
   alt?: string;
+  url?: string;
+  quote?: string;
 }
 
-const { type, href, title, date, tags, excerpt, book, author, progress, image, alt } = Astro.props;
+const { type, href, title, date, tags, excerpt, book, author, progress, image, alt, url, quote } = Astro.props;
 const dateStr = date.toISOString().slice(0, 10);
+let host: string | null = null;
+if (type === 'link' && url) {
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { host = null; }
+}
 ---
 
 <a href={href} class="item">
@@ -31,7 +37,10 @@ const dateStr = date.toISOString().slice(0, 10);
           {progress && <span class="progress">{progress}</span>}
         </span>
       )}
-      {tags.length > 0 && type !== 'reading' && (
+      {type === 'link' && host && (
+        <span class="source">{host}</span>
+      )}
+      {tags.length > 0 && type !== 'reading' && type !== 'link' && (
         <span class="tags">{tags.join('  ')}</span>
       )}
     </div>
@@ -46,9 +55,13 @@ const dateStr = date.toISOString().slice(0, 10);
     </div>
   )}
 
+  {type === 'link' && quote && (
+    <p class="quote">{quote}</p>
+  )}
+
   {excerpt && <p class="excerpt">{excerpt}</p>}
 
-  {type === 'reading' && tags.length > 0 && (
+  {(type === 'reading' || type === 'link') && tags.length > 0 && (
     <span class="tags tags-trail">{tags.join('  ')}</span>
   )}
 </a>
@@ -89,6 +102,7 @@ const dateStr = date.toISOString().slice(0, 10);
   .type-note { color: var(--note); }
   .type-reading { color: var(--reading); }
   .type-photo { color: var(--photo); }
+  .type-link { color: var(--link); }
   .source {
     font-size: 12px;
     color: var(--muted);
@@ -137,5 +151,14 @@ const dateStr = date.toISOString().slice(0, 10);
     font-size: 14px;
     color: var(--muted);
     line-height: 1.75;
+  }
+  .quote {
+    margin-top: 10px;
+    padding-left: 12px;
+    border-left: 2px solid var(--hairline);
+    font-size: 14px;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.7;
   }
 </style>

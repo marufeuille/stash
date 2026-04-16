@@ -8,8 +8,9 @@ import RecentSummary from '../components/RecentSummary.astro';
 const photos = await getCollection('photo');
 const readings = await getCollection('reading');
 const notes = await getCollection('note');
+const links = await getCollection('link');
 
-const allPosts = [...photos, ...readings, ...notes]
+const allPosts = [...photos, ...readings, ...notes, ...links]
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 
@@ -146,6 +147,22 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
             book={d.book}
             author={d.author}
             progress={d.progress}
+            excerpt={excerpt(post.body)}
+          />
+        );
+      }
+      if (d.type === 'link') {
+        let host = '';
+        try { host = new URL(d.url).hostname.replace(/^www\./, ''); } catch {}
+        return (
+          <StreamItem
+            type="link"
+            href={`/link/${post.id}/`}
+            title={d.title ?? (host || 'Untitled')}
+            date={d.date}
+            tags={d.tags}
+            url={d.url}
+            quote={d.quote}
             excerpt={excerpt(post.body)}
           />
         );

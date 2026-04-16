@@ -40,6 +40,19 @@ const note = defineCollection({
   }),
 });
 
+const link = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './content/link' }),
+  schema: z.object({
+    type: z.literal('link'),
+    title: z.string().optional(),
+    date: z.coerce.date(),
+    url: z.string().url(),
+    quote: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    draft: z.boolean().default(false),
+  }),
+});
+
 const meta = defineCollection({
   loader: glob({ pattern: '*.md', base: './content/meta' }),
   schema: z.object({
@@ -47,4 +60,4 @@ const meta = defineCollection({
   }),
 });
 
-export const collections = { photo, reading, note, meta };
+export const collections = { photo, reading, note, link, meta };

@@ -2,7 +2,7 @@
 interface Props {
   title: string;
   description?: string;
-  activeNav?: 'all' | 'note' | 'reading' | 'photo' | 'search';
+  activeNav?: 'all' | 'note' | 'reading' | 'photo' | 'link' | 'search';
 }
 
 const { title, description = 'stash — 断片のための場所', activeNav = 'all' } = Astro.props;
@@ -14,6 +14,7 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
   { key: 'note', label: 'note', href: '/note/' },
   { key: 'reading', label: 'reading', href: '/reading/' },
   { key: 'photo', label: 'photo', href: '/photo/' },
+  { key: 'link', label: 'link', href: '/link/' },
   { key: 'search', label: 'search', href: '/search/' },
 ];
 ---
@@ -77,6 +78,7 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
     --note: #4a7c59;
     --reading: #3a5f8a;
     --photo: #8a6f3a;
+    --link: #7a5a8a;
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP',
       'Segoe UI', Roboto, sans-serif;

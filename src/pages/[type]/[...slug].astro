@@ -7,8 +7,9 @@ export async function getStaticPaths() {
   const photos = await getCollection('photo');
   const readings = await getCollection('reading');
   const notes = await getCollection('note');
+  const links = await getCollection('link');
 
-  const allPosts = [...photos, ...readings, ...notes].filter((post) => !post.data.draft);
+  const allPosts = [...photos, ...readings, ...notes, ...links].filter((post) => !post.data.draft);
 
   return allPosts.map((post) => ({
     params: { type: post.data.type, slug: post.id },
@@ -19,9 +20,26 @@ export async function getStaticPaths() {
 const { post } = Astro.props;
 const { Content } = await render(post);
 const dateStr = post.data.date.toISOString().slice(0, 10);
+let linkHost: string | null = null;
+let linkDisplayUrl: string | null = null;
+if (post.data.type === 'link') {
+  try {
+    const u = new URL(post.data.url);
+    linkHost = u.hostname.replace(/^www\./, '');
+    linkDisplayUrl = (linkHost + u.pathname + u.search).replace(/\/$/, '');
+  } catch {
+    linkHost = null;
+    linkDisplayUrl = post.data.url;
+  }
+}
 const displayTitle =
-  post.data.title || (post.data.type === 'reading' ? post.data.book : 'Untitled');
-const activeNav = post.data.type as 'note' | 'reading' | 'photo';
+  post.data.title ||
+  (post.data.type === 'reading'
+    ? post.data.book
+    : post.data.type === 'link'
+      ? (linkHost ?? 'Untitled')
+      : 'Untitled');
+const activeNav = post.data.type as 'note' | 'reading' | 'photo' | 'link';
 ---
 
 <BaseLayout title={`${displayTitle} — stash`} activeNav={activeNav}>
@@ -45,6 +63,17 @@ const activeNav = post.data.type as 'note' | 'reading' | 'photo';
       <div class="photo">
         <Image src={post.data.image} alt={post.data.alt} format="webp" />
       </div>
+    )}
+
+    {post.data.type === 'link' && (
+      <a class="link-out" href={post.data.url} target="_blank" rel="noopener noreferrer">
+        <span class="link-arrow" aria-hidden="true">→</span>
+        <span class="link-url">{linkDisplayUrl ?? post.data.url}</span>
+      </a>
+    )}
+
+    {post.data.type === 'link' && post.data.quote && (
+      <blockquote class="link-quote">{post.data.quote}</blockquote>
     )}
 
     {post.data.tags.length > 0 && (
@@ -75,6 +104,7 @@ const activeNav = post.data.type as 'note' | 'reading' | 'photo';
   .type-note { color: var(--note); }
   .type-reading { color: var(--reading); }
   .type-photo { color: var(--photo); }
+  .type-link { color: var(--link); }
   time {
     font-family: var(--mono);
     font-size: 11px;
@@ -107,6 +137,43 @@ const activeNav = post.data.type as 'note' | 'reading' | 'photo';
     height: auto;
     display: block;
     border-radius: 2px;
+  }
+  .link-out {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 14px 16px;
+    margin: 4px 0 16px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    transition: border-color 0.15s ease;
+    word-break: break-all;
+  }
+  .link-out:hover {
+    border-color: var(--link);
+  }
+  .link-arrow {
+    font-family: var(--mono);
+    color: var(--link);
+    flex-shrink: 0;
+  }
+  .link-url {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .link-quote {
+    margin: 0 0 24px;
+    padding: 4px 16px;
+    border-left: 2px solid var(--hairline);
+    color: var(--muted);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.75;
   }
   .tags {
     font-family: var(--mono);

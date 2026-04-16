@@ -1,0 +1,11 @@
+{
+  "name": "stash · link",
+  "short_name": "link",
+  "start_url": "/compose/link",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#fafaf7",
+  "icons": [
+    { "src": "/icons/link.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -6,10 +6,11 @@ export function getStaticPaths() {
     { params: { type: 'note' } },
     { params: { type: 'reading' } },
     { params: { type: 'photo' } },
+    { params: { type: 'link' } },
   ];
 }
 
-const { type } = Astro.params as { type: 'note' | 'reading' | 'photo' };
+const { type } = Astro.params as { type: 'note' | 'reading' | 'photo' | 'link' };
 
 const templates = {
   note:
@@ -33,6 +34,14 @@ const templates = {
     'date: {{date}}\n' +
     'image: ""\n' +
     'alt: ""\n' +
+    'tags: []\n' +
+    'draft: true\n',
+  link:
+    'type: link\n' +
+    'title: ""\n' +
+    'date: {{date}}\n' +
+    'url: "{{url}}"\n' +
+    'quote: ""\n' +
     'tags: []\n' +
     'draft: true\n',
 };
@@ -64,7 +73,19 @@ const template = templates[type];
         d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
       var name =
         dateStr + '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
-      var frontmatter = '---\n' + template.replace('{{date}}', dateStr) + '---\n\n';
+      var url = '';
+      if (type === 'link') {
+        var qs = new URLSearchParams(location.search);
+        url = qs.get('url') || prompt('URL?') || '';
+        if (!url) {
+          history.length > 1 ? history.back() : (location.href = '/');
+          return;
+        }
+      }
+      var body = template
+        .replace('{{date}}', dateStr)
+        .replace('{{url}}', url.replace(/"/g, '\\"'));
+      var frontmatter = '---\n' + body + '---\n\n';
       var href = 'obsidian://new?vault=stash&file=' +
         encodeURIComponent(type + '/' + name) +
         '&content=' + encodeURIComponent(frontmatter);
@@ -87,6 +108,7 @@ const template = templates[type];
   .hint-note { color: var(--note); }
   .hint-reading { color: var(--reading); }
   .hint-photo { color: var(--photo); }
+  .hint-link { color: var(--link); }
   .fallback {
     font-size: 14px;
     color: var(--muted);

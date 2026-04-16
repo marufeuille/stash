@@ -11,8 +11,10 @@
 | note | 自由なメモ・断片 | `type` `date` |
 | reading | 読書メモ | `type` `date` `book` `author` |
 | photo | 写真 | `type` `date` `image` `alt` |
+| link | 外部URLを一言とともに残す | `type` `date` `url` |
 
 すべて `title` `tags` `draft` が扱える。`draft: true` の投稿はビルド対象外。
+link は任意で `quote`（引用）が持てる。
 
 ## 投稿フロー
 
@@ -30,7 +32,8 @@ https://stash.marufeuille.workers.dev
 ```
 
 - オーナー端末で `/?own=1` を一度開くと localStorage にフラグが立ち、ホームにキャプチャバーが出る
-- `/compose/{note,reading,photo}` で type別に Obsidian 新規ノートを起動。Android では各ページをホーム画面追加すると type色違いのアイコンになる
+- `/compose/{note,reading,photo,link}` で type別に Obsidian 新規ノートを起動。Android では各ページをホーム画面追加すると type色違いのアイコンになる
+- `/compose/link` は URL を `?url=...` クエリで受け取るか、無ければ起動時に `prompt()` で訊く
 - キャプチャバーは `⌘N` / `Ctrl+N` のショートカットに対応
 
 ## アーキテクチャ
@@ -59,7 +62,7 @@ npm test               # テスト
 `npm run build:ci` が以下を実行：
 
 1. `scripts/sync-content.mjs` が `STASH_VAULT_REPO`（例: `user/stash-vault`）を shallow clone
-2. `note/` `reading/` `photo/` を `content/` にコピー
+2. `note/` `reading/` `photo/` `link/` を `content/` にコピー
 3. `astro build`
 
 必要な環境変数:
@@ -90,7 +93,7 @@ src/
   components/StreamItem.astro    一覧の1項目
   pages/
     index.astro                  all 一覧
-    {note,reading,photo}/        type別 一覧
+    {note,reading,photo,link}/   type別 一覧
     [type]/[...slug].astro       詳細
     search.astro                 クライアントサイド検索
     compose.astro                /compose → /compose/note リダイレクト
@@ -99,7 +102,7 @@ src/
 content/                         vault から注入（gitignore）
 design/stash.pen                 Pencil デザインファイル
 public/
-  icons/{note,reading,photo}.png Android ホーム画面アイコン
+  icons/{note,reading,photo,link}.png Android ホーム画面アイコン
   manifest-*.json                type別 PWA manifest
 scripts/sync-content.mjs         vault 同期スクリプト
 docs/stash-vault-setup/          vault 側テンプレ
