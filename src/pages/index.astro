@@ -3,6 +3,7 @@ import { getCollection, getEntry, render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import StreamItem from '../components/StreamItem.astro';
 import { excerpt } from '../lib/excerpt';
+import { sortPostsDesc } from '../lib/sortPosts';
 import RecentSummary from '../components/RecentSummary.astro';
 
 const photos = await getCollection('photo');
@@ -10,9 +11,9 @@ const readings = await getCollection('reading');
 const notes = await getCollection('note');
 const links = await getCollection('link');
 
-const allPosts = [...photos, ...readings, ...notes, ...links]
-  .filter((post) => !post.data.draft)
-  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+const allPosts = sortPostsDesc(
+  [...photos, ...readings, ...notes, ...links].filter((post) => !post.data.draft),
+);
 
 const aboutEntry = await getEntry('meta', 'about');
 const AboutContent = aboutEntry ? (await render(aboutEntry)).Content : null;

@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { excerpt } from '../lib/excerpt';
+import { sortPostsDesc } from '../lib/sortPosts';
 
 const photos = await getCollection('photo');
 const readings = await getCollection('reading');
@@ -19,21 +20,13 @@ type IndexEntry = {
   haystack: string;
 };
 
-const index: IndexEntry[] = [
-  ...notes.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
-    const title = p.data.title ?? 'Untitled';
-    const ex = excerpt(p.body, 140);
-    return {
-      type: 'note',
-      href: `/note/${p.id}/`,
-      title,
-      date: p.data.date.toISOString().slice(0, 10),
-      tags: p.data.tags,
-      excerpt: ex,
-      haystack: [title, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
-    };
-  }),
-  ...readings.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+const allPosts = sortPostsDesc(
+  [...notes, ...readings, ...photos, ...links].filter((p) => !p.data.draft),
+);
+
+const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
+  const date = p.data.date.toISOString().slice(0, 10);
+  if (p.data.type === 'reading') {
     const title = p.data.title ?? p.data.book;
     const ex = excerpt(p.body, 140);
     const source = `${p.data.book} — ${p.data.author}`;
@@ -41,26 +34,26 @@ const index: IndexEntry[] = [
       type: 'reading',
       href: `/reading/${p.id}/`,
       title,
-      date: p.data.date.toISOString().slice(0, 10),
+      date,
       tags: p.data.tags,
       excerpt: ex,
       source,
       haystack: [title, source, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
     };
-  }),
-  ...photos.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+  }
+  if (p.data.type === 'photo') {
     const title = p.data.title ?? 'Untitled';
     return {
       type: 'photo',
       href: `/photo/${p.id}/`,
       title,
-      date: p.data.date.toISOString().slice(0, 10),
+      date,
       tags: p.data.tags,
       excerpt: p.data.alt ?? '',
       haystack: [title, p.data.alt ?? '', p.data.tags.join(' ')].join(' ').toLowerCase(),
     };
-  }),
-  ...links.filter((p) => !p.data.draft).map<IndexEntry>((p) => {
+  }
+  if (p.data.type === 'link') {
     let host = '';
     try { host = new URL(p.data.url).hostname.replace(/^www\./, ''); } catch {}
     const title = p.data.title ?? (host || 'Untitled');
@@ -69,14 +62,25 @@ const index: IndexEntry[] = [
       type: 'link',
       href: `/link/${p.id}/`,
       title,
-      date: p.data.date.toISOString().slice(0, 10),
+      date,
       tags: p.data.tags,
       excerpt: ex,
       source: host,
       haystack: [title, host, p.data.url, p.data.quote ?? '', ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
     };
-  }),
-].sort((a, b) => b.date.localeCompare(a.date));
+  }
+  const title = p.data.title ?? 'Untitled';
+  const ex = excerpt(p.body, 140);
+  return {
+    type: 'note',
+    href: `/note/${p.id}/`,
+    title,
+    date,
+    tags: p.data.tags,
+    excerpt: ex,
+    haystack: [title, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
+  };
+});
 ---
 
 <BaseLayout title="search — stash" activeNav="search">
