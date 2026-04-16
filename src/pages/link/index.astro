@@ -3,10 +3,11 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import StreamItem from '../../components/StreamItem.astro';
 import { excerpt } from '../../lib/excerpt';
+import { sortPostsDesc } from '../../lib/sortPosts';
 
-const posts = (await getCollection('link'))
-  .filter((p) => !p.data.draft)
-  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+const posts = sortPostsDesc(
+  (await getCollection('link')).filter((p) => !p.data.draft),
+);
 ---
 
 <BaseLayout title="link — stash" activeNav="link">

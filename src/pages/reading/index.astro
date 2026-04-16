@@ -4,10 +4,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import StreamItem from '../../components/StreamItem.astro';
 import RecentSummary from '../../components/RecentSummary.astro';
 import { excerpt } from '../../lib/excerpt';
+import { sortPostsDesc } from '../../lib/sortPosts';
 
-const posts = (await getCollection('reading'))
-  .filter((p) => !p.data.draft)
-  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+const posts = sortPostsDesc(
+  (await getCollection('reading')).filter((p) => !p.data.draft),
+);
 ---
 
 <BaseLayout title="reading — stash" activeNav="reading">
