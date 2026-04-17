@@ -11,16 +11,24 @@ const [photos, readings, notes, links] = await Promise.all([
 ]);
 
 const graph = buildGraph([...notes, ...readings, ...photos, ...links]);
+// minNodeSpacing is roughly the label width budget: when nodes are closer in
+// time than this, the lane packer will push the later one to a new lane so
+// labels have room to breathe.
 const layout = layoutGraph(graph, {
-  laneHeight: 36,
-  minNodeSpacing: 28,
+  laneHeight: 30,
+  minNodeSpacing: 160,
   paddingX: 40,
-  paddingY: 40,
+  paddingY: 36,
   minWidth: 960,
 });
 
 const nodeRadius = 6;
 const nodesByKey = new Map(layout.nodes.map((n) => [n.key, n]));
+
+function shortTitle(title: string, max = 18): string {
+  const t = title.trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
 
 function edgePath(fromX: number, fromY: number, toX: number, toY: number): string {
   const direction = toX < fromX ? -1 : 1;
@@ -138,7 +146,7 @@ const baselineY = layout.height - 24;
             <a href={n.href}>
               <g class={`node node-${n.type}`}>
                 <circle cx={n.x} cy={n.y} r={nodeRadius} />
-                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label">{n.title}</text>
+                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label">{shortTitle(n.title)}</text>
                 <title>{`${n.type} — ${n.title} (${n.date.toISOString().slice(0, 10)})`}</title>
               </g>
             </a>
