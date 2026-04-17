@@ -66,9 +66,6 @@ const baselineY = layout.height - 24;
 <BaseLayout title="graph — stash" activeNav="graph">
   <section class="graph-intro">
     <h1 class="graph-heading">graph</h1>
-    <p class="graph-desc">
-      frontmatter の <code>follows:</code> で繋がったメモを時系列の有向グラフとして表示。左ほど古く、矢印は「前のメモ → 続きのメモ」の向き。
-    </p>
     {hasData && (
       <p class="graph-stats">
         <span>{stats.total} nodes</span>
@@ -155,20 +152,6 @@ const baselineY = layout.height - 24;
     font-size: 18px;
     font-weight: 500;
     margin-bottom: 8px;
-  }
-  .graph-desc {
-    font-size: 14px;
-    color: var(--muted);
-    line-height: 1.7;
-    margin-bottom: 10px;
-  }
-  .graph-desc :global(code) {
-    font-family: var(--mono);
-    font-size: 12px;
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    padding: 1px 5px;
-    border-radius: 2px;
   }
   .graph-stats {
     display: flex;
