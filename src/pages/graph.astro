@@ -1,0 +1,251 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { buildGraph, layoutGraph } from '../lib/graph';
+
+const [photos, readings, notes, links] = await Promise.all([
+  getCollection('photo'),
+  getCollection('reading'),
+  getCollection('note'),
+  getCollection('link'),
+]);
+
+const graph = buildGraph([...notes, ...readings, ...photos, ...links]);
+const layout = layoutGraph(graph, {
+  laneHeight: 36,
+  minNodeSpacing: 28,
+  paddingX: 40,
+  paddingY: 40,
+  minWidth: 960,
+});
+
+const nodeRadius = 6;
+const nodesByKey = new Map(layout.nodes.map((n) => [n.key, n]));
+
+function edgePath(fromX: number, fromY: number, toX: number, toY: number): string {
+  const dx = Math.max(40, (toX - fromX) * 0.5);
+  const c1x = fromX + dx;
+  const c1y = fromY;
+  const c2x = toX - dx;
+  const c2y = toY;
+  return `M ${fromX.toFixed(2)} ${fromY.toFixed(2)} C ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${toX.toFixed(2)} ${toY.toFixed(2)}`;
+}
+
+const edgeSegments = layout.edges
+  .map((e) => {
+    const from = nodesByKey.get(e.from);
+    const to = nodesByKey.get(e.to);
+    if (!from || !to) return null;
+    const fromX = from.x + nodeRadius;
+    const fromY = from.y;
+    const toX = to.x - nodeRadius;
+    const toY = to.y;
+    return {
+      d: edgePath(fromX, fromY, toX, toY),
+      fromKey: e.from,
+      toKey: e.to,
+    };
+  })
+  .filter((e): e is { d: string; fromKey: string; toKey: string } => e !== null);
+
+const stats = {
+  total: layout.nodes.length,
+  edges: edgeSegments.length,
+  byType: {
+    note: layout.nodes.filter((n) => n.type === 'note').length,
+    reading: layout.nodes.filter((n) => n.type === 'reading').length,
+    photo: layout.nodes.filter((n) => n.type === 'photo').length,
+    link: layout.nodes.filter((n) => n.type === 'link').length,
+  },
+};
+
+const hasData = layout.nodes.length > 0;
+const baselineY = layout.height - 24;
+---
+
+<BaseLayout title="graph — stash" activeNav="graph">
+  <section class="graph-intro">
+    <h1 class="graph-heading">graph</h1>
+    <p class="graph-desc">
+      frontmatter の <code>follows:</code> で繋がったメモを時系列の有向グラフとして表示。左ほど古く、矢印は「前のメモ → 続きのメモ」の向き。
+    </p>
+    {hasData && (
+      <p class="graph-stats">
+        <span>{stats.total} nodes</span>
+        <span>{stats.edges} edges</span>
+        <span class="stat-type type-note">note {stats.byType.note}</span>
+        <span class="stat-type type-reading">reading {stats.byType.reading}</span>
+        <span class="stat-type type-photo">photo {stats.byType.photo}</span>
+        <span class="stat-type type-link">link {stats.byType.link}</span>
+      </p>
+    )}
+  </section>
+
+  {!hasData && (
+    <p class="graph-empty">まだメモがありません。</p>
+  )}
+
+  {hasData && (
+    <div class="graph-scroll">
+      <svg
+        class="graph-svg"
+        viewBox={`0 0 ${layout.width} ${layout.height}`}
+        width={layout.width}
+        height={layout.height}
+        role="img"
+        aria-label="メモ同士のつながりを時系列で示した有向グラフ"
+      >
+        <defs>
+          <marker
+            id="arrowhead"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--faint)" />
+          </marker>
+        </defs>
+
+        <g class="ticks">
+          {layout.dateTicks.map((t) => (
+            <g>
+              <line
+                x1={t.x}
+                y1={24}
+                x2={t.x}
+                y2={baselineY}
+                class="tick-line"
+              />
+              <text x={t.x} y={baselineY + 14} class="tick-label">{t.label}</text>
+            </g>
+          ))}
+        </g>
+
+        <g class="edges">
+          {edgeSegments.map((e) => (
+            <path d={e.d} class="edge" />
+          ))}
+        </g>
+
+        <g class="nodes">
+          {layout.nodes.map((n) => (
+            <a href={n.href}>
+              <g class={`node node-${n.type}`}>
+                <circle cx={n.x} cy={n.y} r={nodeRadius} />
+                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label">{n.title}</text>
+                <title>{`${n.type} — ${n.title} (${n.date.toISOString().slice(0, 10)})`}</title>
+              </g>
+            </a>
+          ))}
+        </g>
+      </svg>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  .graph-intro {
+    margin-bottom: 20px;
+  }
+  .graph-heading {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .graph-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 10px;
+  }
+  .graph-desc :global(code) {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .graph-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .stat-type.type-note { color: var(--note); }
+  .stat-type.type-reading { color: var(--reading); }
+  .stat-type.type-photo { color: var(--photo); }
+  .stat-type.type-link { color: var(--link); }
+  .graph-empty {
+    font-size: 14px;
+    color: var(--muted);
+    padding: 40px 0;
+    text-align: center;
+  }
+  .graph-scroll {
+    margin: 24px -32px 0;
+    padding: 0 32px;
+    overflow-x: auto;
+  }
+  .graph-svg {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+  }
+  .graph-svg :global(.tick-line) {
+    stroke: var(--hairline);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+  }
+  .graph-svg :global(.tick-label) {
+    font-family: var(--mono);
+    font-size: 10px;
+    fill: var(--faint);
+    text-anchor: middle;
+  }
+  .graph-svg :global(.edge) {
+    fill: none;
+    stroke: var(--faint);
+    stroke-width: 1.2;
+    opacity: 0.7;
+    marker-end: url(#arrowhead);
+  }
+  .graph-svg :global(.node circle) {
+    stroke: var(--surface);
+    stroke-width: 2;
+    transition: r 0.12s ease;
+  }
+  .graph-svg :global(.node:hover circle) {
+    r: 8;
+  }
+  .graph-svg :global(.node-note circle) { fill: var(--note); }
+  .graph-svg :global(.node-reading circle) { fill: var(--reading); }
+  .graph-svg :global(.node-photo circle) { fill: var(--photo); }
+  .graph-svg :global(.node-link circle) { fill: var(--link); }
+  .graph-svg :global(.node-label) {
+    font-family: var(--sans);
+    font-size: 11px;
+    fill: var(--ink-soft);
+    pointer-events: none;
+  }
+  .graph-svg :global(.node:hover .node-label) {
+    fill: var(--ink);
+  }
+  .graph-svg :global(a) {
+    cursor: pointer;
+  }
+
+  @media (max-width: 600px) {
+    .graph-scroll {
+      margin: 20px -20px 0;
+      padding: 0 20px;
+    }
+  }
+</style>

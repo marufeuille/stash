@@ -1,6 +1,8 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
+const followsField = z.array(z.string()).default([]);
+
 const photo = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './content/photo' }),
   schema: ({ image }) =>
@@ -11,6 +13,7 @@ const photo = defineCollection({
       image: image(),
       alt: z.string(),
       tags: z.array(z.string()).default([]),
+      follows: followsField,
       draft: z.boolean().default(false),
     }),
 });
@@ -25,6 +28,7 @@ const reading = defineCollection({
     author: z.string(),
     progress: z.string().optional(),
     tags: z.array(z.string()).default([]),
+    follows: followsField,
     draft: z.boolean().default(false),
   }),
 });
@@ -36,6 +40,7 @@ const note = defineCollection({
     title: z.string().optional(),
     date: z.coerce.date(),
     tags: z.array(z.string()).default([]),
+    follows: followsField,
     draft: z.boolean().default(false),
   }),
 });
@@ -49,6 +54,7 @@ const link = defineCollection({
     url: z.string().url(),
     quote: z.string().optional(),
     tags: z.array(z.string()).default([]),
+    follows: followsField,
     draft: z.boolean().default(false),
   }),
 });
