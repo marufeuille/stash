@@ -23,7 +23,8 @@ const nodeRadius = 6;
 const nodesByKey = new Map(layout.nodes.map((n) => [n.key, n]));
 
 function edgePath(fromX: number, fromY: number, toX: number, toY: number): string {
-  const dx = Math.max(40, (toX - fromX) * 0.5);
+  const direction = toX < fromX ? -1 : 1;
+  const dx = direction * Math.max(40, Math.abs(toX - fromX) * 0.5);
   const c1x = fromX + dx;
   const c1y = fromY;
   const c2x = toX - dx;
@@ -36,9 +37,10 @@ const edgeSegments = layout.edges
     const from = nodesByKey.get(e.from);
     const to = nodesByKey.get(e.to);
     if (!from || !to) return null;
-    const fromX = from.x + nodeRadius;
+    // Newer (to/child) is on the left, older (from/parent) is on the right.
+    const fromX = from.x - nodeRadius;
     const fromY = from.y;
-    const toX = to.x - nodeRadius;
+    const toX = to.x + nodeRadius;
     const toY = to.y;
     return {
       d: edgePath(fromX, fromY, toX, toY),
@@ -83,6 +85,10 @@ const baselineY = layout.height - 24;
   )}
 
   {hasData && (
+    <div class="graph-direction" aria-hidden="true">
+      <span>◀ recent</span>
+      <span>older ▶</span>
+    </div>
     <div class="graph-scroll">
       <svg
         class="graph-svg"
@@ -171,8 +177,16 @@ const baselineY = layout.height - 24;
     padding: 40px 0;
     text-align: center;
   }
+  .graph-direction {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin: 20px 0 6px;
+  }
   .graph-scroll {
-    margin: 24px -32px 0;
+    margin: 0 -32px;
     padding: 0 32px;
     overflow-x: auto;
   }
