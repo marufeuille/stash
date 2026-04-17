@@ -1,86 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { excerpt } from '../lib/excerpt';
-import { sortPostsDesc } from '../lib/sortPosts';
-
-const photos = await getCollection('photo');
-const readings = await getCollection('reading');
-const notes = await getCollection('note');
-const links = await getCollection('link');
-
-type IndexEntry = {
-  type: 'note' | 'reading' | 'photo' | 'link';
-  href: string;
-  title: string;
-  date: string;
-  tags: string[];
-  excerpt: string;
-  source?: string;
-  haystack: string;
-};
-
-const allPosts = sortPostsDesc(
-  [...notes, ...readings, ...photos, ...links].filter((p) => !p.data.draft),
-);
-
-const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
-  const date = p.data.date.toISOString().slice(0, 10);
-  if (p.data.type === 'reading') {
-    const title = p.data.title ?? p.data.book;
-    const ex = excerpt(p.body, 140);
-    const source = `${p.data.book} — ${p.data.author}`;
-    return {
-      type: 'reading',
-      href: `/reading/${p.id}/`,
-      title,
-      date,
-      tags: p.data.tags,
-      excerpt: ex,
-      source,
-      haystack: [title, source, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
-    };
-  }
-  if (p.data.type === 'photo') {
-    const title = p.data.title ?? 'Untitled';
-    return {
-      type: 'photo',
-      href: `/photo/${p.id}/`,
-      title,
-      date,
-      tags: p.data.tags,
-      excerpt: p.data.alt ?? '',
-      haystack: [title, p.data.alt ?? '', p.data.tags.join(' ')].join(' ').toLowerCase(),
-    };
-  }
-  if (p.data.type === 'link') {
-    let host = '';
-    try { host = new URL(p.data.url).hostname.replace(/^www\./, ''); } catch {}
-    const title = p.data.title ?? (host || 'Untitled');
-    const ex = p.data.quote ?? excerpt(p.body, 140);
-    return {
-      type: 'link',
-      href: `/link/${p.id}/`,
-      title,
-      date,
-      tags: p.data.tags,
-      excerpt: ex,
-      source: host,
-      haystack: [title, host, p.data.url, p.data.quote ?? '', ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
-    };
-  }
-  const title = p.data.title ?? 'Untitled';
-  const ex = excerpt(p.body, 140);
-  return {
-    type: 'note',
-    href: `/note/${p.id}/`,
-    title,
-    date,
-    tags: p.data.tags,
-    excerpt: ex,
-    haystack: [title, ex, p.data.tags.join(' ')].join(' ').toLowerCase(),
-  };
-});
 ---
 
 <BaseLayout title="search — stash" activeNav="search">
@@ -94,19 +13,22 @@ const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
       autofocus
     />
     <span class="search-hint">
-      <span id="count">{index.length}</span>
+      <span id="count">—</span>
     </span>
   </div>
 
   <main class="stream" id="results"></main>
 
   <p class="empty" id="empty" hidden>no fragments match.</p>
-
-  <script is:inline type="application/json" id="index-data" set:html={JSON.stringify(index)} />
+  <p class="loading" id="loading">loading index…</p>
 </BaseLayout>
 
 <script>
+  import MiniSearch from 'minisearch';
+  import { tokenize } from '../lib/searchTokenize';
+
   type Entry = {
+    id: string;
     type: 'note' | 'reading' | 'photo' | 'link';
     href: string;
     title: string;
@@ -114,19 +36,23 @@ const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
     tags: string[];
     excerpt: string;
     source?: string;
-    haystack: string;
+    body: string;
   };
 
-  const raw = document.getElementById('index-data')?.textContent ?? '[]';
-  const entries: Entry[] = JSON.parse(raw);
   const input = document.getElementById('q') as HTMLInputElement;
   const results = document.getElementById('results')!;
   const count = document.getElementById('count')!;
   const empty = document.getElementById('empty')!;
+  const loading = document.getElementById('loading')!;
+
+  let entries: Entry[] = [];
+  let byId = new Map<string, Entry>();
+  let mini: MiniSearch<Entry> | null = null;
 
   function escapeHtml(s: string): string {
-    return s.replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!),
+    return s.replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!),
     );
   }
 
@@ -139,14 +65,13 @@ const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
     empty.hidden = true;
     results.innerHTML = list
       .map((e) => {
-        const meta = (e.type === 'reading' || e.type === 'link') && e.source
-          ? `<span class="source">${escapeHtml(e.source)}</span>`
-          : e.tags.length
-            ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
-            : '';
-        const body = e.excerpt
-          ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>`
-          : '';
+        const meta =
+          (e.type === 'reading' || e.type === 'link') && e.source
+            ? `<span class="source">${escapeHtml(e.source)}</span>`
+            : e.tags.length
+              ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
+              : '';
+        const body = e.excerpt ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>` : '';
         return `
           <a href="${e.href}" class="item">
             <div class="meta">
@@ -164,21 +89,55 @@ const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
       .join('');
   }
 
-  function filter(q: string): Entry[] {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return entries;
-    const tokens = needle.split(/\s+/);
-    return entries.filter((e) => tokens.every((t) => e.haystack.includes(t)));
-  }
-
   function update(): void {
-    const list = filter(input.value);
+    if (!mini) return;
+    const q = input.value.trim();
+    let list: Entry[];
+    if (!q) {
+      list = entries;
+    } else {
+      const hits = mini.search(q);
+      list = hits.map((h) => byId.get(String(h.id))!).filter(Boolean);
+    }
     count.textContent = String(list.length);
     render(list);
   }
 
+  async function init(): Promise<void> {
+    const res = await fetch('/search-index.json');
+    entries = (await res.json()) as Entry[];
+    byId = new Map(entries.map((e) => [e.id, e]));
+
+    mini = new MiniSearch<Entry>({
+      idField: 'id',
+      fields: ['title', 'tags', 'source', 'body'],
+      storeFields: ['id'],
+      tokenize: (text) => tokenize(text),
+      processTerm: (t) => t,
+      extractField: (doc, fieldName) => {
+        const v = (doc as unknown as Record<string, unknown>)[fieldName];
+        if (Array.isArray(v)) return v.join(' ');
+        return typeof v === 'string' ? v : '';
+      },
+      searchOptions: {
+        boost: { title: 3, tags: 2, source: 2, body: 1 },
+        fuzzy: 0.2,
+        prefix: true,
+        combineWith: 'AND',
+      },
+    });
+    mini.addAll(entries);
+
+    loading.hidden = true;
+    count.textContent = String(entries.length);
+    update();
+  }
+
   input.addEventListener('input', update);
-  update();
+  init().catch((err) => {
+    loading.textContent = 'failed to load index.';
+    console.error(err);
+  });
 </script>
 
 <style>
@@ -220,7 +179,8 @@ const index: IndexEntry[] = allPosts.map<IndexEntry>((p) => {
   .stream:empty {
     border-bottom: none;
   }
-  .empty {
+  .empty,
+  .loading {
     padding: 48px 0;
     text-align: center;
     font-family: var(--mono);
