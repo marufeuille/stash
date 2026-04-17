@@ -131,8 +131,10 @@ function timeValue(n: GraphNode): number {
 
 /**
  * Lay out the graph as a time-series DAG.
- * X axis is time (left = older). Each node is placed in a lane so that nodes
- * connected via follows tend to share a lane, and edges are drawn as curves.
+ * X axis is time (left = newer, right = older). Each node is placed in a lane
+ * so that nodes connected via follows tend to share a lane, and edges are
+ * drawn as curves. Internally the packing iterates oldest → newest and x is
+ * mirrored at the end so the final result is reversed on screen.
  */
 export function layoutGraph(graph: Graph, opts: LayoutOptions = {}): Layout {
   const laneHeight = opts.laneHeight ?? 34;
@@ -209,17 +211,22 @@ export function layoutGraph(graph: Graph, opts: LayoutOptions = {}): Layout {
   const height = paddingY * 2 + Math.max(1, laneCount) * laneHeight;
   const width = paddingX * 2 + innerWidth;
 
+  // Mirror x so that newer nodes appear on the left. The packing above runs
+  // left-to-right (oldest → newest); mirroring preserves relative spacing.
+  const mirror = (x: number) => width - x;
+
   const laidOut: LaidOutNode[] = sorted.map((n) => {
     const lane = nodeLane.get(n.key)!;
     return {
       ...n,
-      x: nodeX.get(n.key)!,
+      x: mirror(nodeX.get(n.key)!),
       y: paddingY + lane * laneHeight + laneHeight / 2,
       lane,
     };
   });
 
-  const dateTicks = buildDateTicks(sorted[0].date, sorted[sorted.length - 1].date, minT, span, paddingX, innerWidth);
+  const dateTicks = buildDateTicks(sorted[0].date, sorted[sorted.length - 1].date, minT, span, paddingX, innerWidth)
+    .map((t) => ({ ...t, x: mirror(t.x) }));
 
   return {
     nodes: laidOut,

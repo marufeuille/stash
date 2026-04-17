@@ -11,19 +11,28 @@ const [photos, readings, notes, links] = await Promise.all([
 ]);
 
 const graph = buildGraph([...notes, ...readings, ...photos, ...links]);
+// minNodeSpacing is roughly the label width budget: when nodes are closer in
+// time than this, the lane packer will push the later one to a new lane so
+// labels have room to breathe.
 const layout = layoutGraph(graph, {
-  laneHeight: 36,
-  minNodeSpacing: 28,
+  laneHeight: 30,
+  minNodeSpacing: 160,
   paddingX: 40,
-  paddingY: 40,
+  paddingY: 36,
   minWidth: 960,
 });
 
 const nodeRadius = 6;
 const nodesByKey = new Map(layout.nodes.map((n) => [n.key, n]));
 
+function shortTitle(title: string, max = 18): string {
+  const t = title.trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
 function edgePath(fromX: number, fromY: number, toX: number, toY: number): string {
-  const dx = Math.max(40, (toX - fromX) * 0.5);
+  const direction = toX < fromX ? -1 : 1;
+  const dx = direction * Math.max(40, Math.abs(toX - fromX) * 0.5);
   const c1x = fromX + dx;
   const c1y = fromY;
   const c2x = toX - dx;
@@ -36,9 +45,10 @@ const edgeSegments = layout.edges
     const from = nodesByKey.get(e.from);
     const to = nodesByKey.get(e.to);
     if (!from || !to) return null;
-    const fromX = from.x + nodeRadius;
+    // Newer (to/child) is on the left, older (from/parent) is on the right.
+    const fromX = from.x - nodeRadius;
     const fromY = from.y;
-    const toX = to.x - nodeRadius;
+    const toX = to.x + nodeRadius;
     const toY = to.y;
     return {
       d: edgePath(fromX, fromY, toX, toY),
@@ -66,9 +76,6 @@ const baselineY = layout.height - 24;
 <BaseLayout title="graph — stash" activeNav="graph">
   <section class="graph-intro">
     <h1 class="graph-heading">graph</h1>
-    <p class="graph-desc">
-      frontmatter の <code>follows:</code> で繋がったメモを時系列の有向グラフとして表示。左ほど古く、矢印は「前のメモ → 続きのメモ」の向き。
-    </p>
     {hasData && (
       <p class="graph-stats">
         <span>{stats.total} nodes</span>
@@ -86,6 +93,10 @@ const baselineY = layout.height - 24;
   )}
 
   {hasData && (
+    <div class="graph-direction" aria-hidden="true">
+      <span>◀ recent</span>
+      <span>older ▶</span>
+    </div>
     <div class="graph-scroll">
       <svg
         class="graph-svg"
@@ -135,7 +146,7 @@ const baselineY = layout.height - 24;
             <a href={n.href}>
               <g class={`node node-${n.type}`}>
                 <circle cx={n.x} cy={n.y} r={nodeRadius} />
-                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label">{n.title}</text>
+                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label">{shortTitle(n.title)}</text>
                 <title>{`${n.type} — ${n.title} (${n.date.toISOString().slice(0, 10)})`}</title>
               </g>
             </a>
@@ -156,20 +167,6 @@ const baselineY = layout.height - 24;
     font-weight: 500;
     margin-bottom: 8px;
   }
-  .graph-desc {
-    font-size: 14px;
-    color: var(--muted);
-    line-height: 1.7;
-    margin-bottom: 10px;
-  }
-  .graph-desc :global(code) {
-    font-family: var(--mono);
-    font-size: 12px;
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    padding: 1px 5px;
-    border-radius: 2px;
-  }
   .graph-stats {
     display: flex;
     flex-wrap: wrap;
@@ -188,8 +185,16 @@ const baselineY = layout.height - 24;
     padding: 40px 0;
     text-align: center;
   }
+  .graph-direction {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin: 20px 0 6px;
+  }
   .graph-scroll {
-    margin: 24px -32px 0;
+    margin: 0 -32px;
     padding: 0 32px;
     overflow-x: auto;
   }

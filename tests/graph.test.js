@@ -123,7 +123,7 @@ describe('layoutGraph', () => {
     expect(layout.laneCount).toBe(0);
   });
 
-  it('時系列でノードを並べる（x 座標は日付順）', () => {
+  it('時系列でノードを並べる（新しいほど x 座標が小さい = 左）', () => {
     const posts = [
       makePost({ type: 'note', id: 'a', date: '2026-04-01', title: 'A' }),
       makePost({ type: 'note', id: 'b', date: '2026-04-10', title: 'B' }),
@@ -131,8 +131,8 @@ describe('layoutGraph', () => {
     ];
     const layout = layoutGraph(buildGraph(posts));
     const byKey = Object.fromEntries(layout.nodes.map((n) => [n.key, n]));
-    expect(byKey['note/a'].x).toBeLessThan(byKey['note/c'].x);
-    expect(byKey['note/c'].x).toBeLessThan(byKey['note/b'].x);
+    expect(byKey['note/b'].x).toBeLessThan(byKey['note/c'].x);
+    expect(byKey['note/c'].x).toBeLessThan(byKey['note/a'].x);
   });
 
   it('follows で繋がるノードは同じレーンを優先する', () => {
