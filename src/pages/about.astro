@@ -16,12 +16,6 @@ const title = entry?.data.title ?? 'about';
     <div class="body">
       {Content ? <Content /> : <p class="empty">about.md がvaultにまだありません。</p>}
     </div>
-    <nav class="extras" aria-label="その他のビュー">
-      <h2 class="extras-heading">other views</h2>
-      <ul class="extras-list">
-        <li><a href="/graph/">graph</a></li>
-      </ul>
-    </nav>
   </article>
 </BaseLayout>
 
@@ -91,30 +85,5 @@ const title = entry?.data.title ?? 'about';
     color: var(--faint);
     font-family: var(--mono);
     font-size: 13px;
-  }
-  .extras {
-    margin-top: 40px;
-    padding-top: 20px;
-    border-top: 1px solid var(--hairline);
-  }
-  .extras-heading {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--faint);
-    letter-spacing: 0.02em;
-    margin-bottom: 10px;
-  }
-  .extras-list {
-    list-style: none;
-    font-size: 14px;
-  }
-  .extras-list a {
-    color: var(--ink-soft);
-    border-bottom: 1px solid var(--hairline);
-  }
-  .extras-list a:hover {
-    border-bottom-color: var(--ink);
-    color: var(--ink);
   }
 </style>
