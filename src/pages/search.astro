@@ -81,12 +81,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     art.dataset.id = e.id;
     art.style.order = String(index);
 
-    const metaRight =
+    const sourcePart =
       (e.type === 'reading' || e.type === 'link') && e.source
         ? `<span class="source">${escapeHtml(e.source)}</span>`
-        : e.tags.length
-          ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
-          : '';
+        : '';
+    const tagsPart = e.tags.length
+      ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
+      : '';
+    const metaRight = [sourcePart, tagsPart]
+      .filter(Boolean)
+      .join('<span class="meta-sep" aria-hidden="true">/</span>');
 
     const excerptLine = e.excerpt ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>` : '';
 
@@ -654,6 +658,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .stream :global(.source) {
     font-size: 12px;
     color: var(--muted);
+  }
+  .stream :global(.meta-sep) {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faintest);
   }
   .stream :global(.title) {
     font-size: 16px;
