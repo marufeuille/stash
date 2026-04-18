@@ -37,7 +37,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     excerpt: string;
     source?: string;
     body: string;
+    follows: string[];
   };
+
+  const HOP_DEPTH = 2;
 
   const input = document.getElementById('q') as HTMLInputElement;
   const results = document.getElementById('results')!;
@@ -46,7 +49,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   const loading = document.getElementById('loading')!;
 
   let entries: Entry[] = [];
-  let byId = new Map<string, Entry>();
+  const byId = new Map<string, Entry>();
+  const childrenMap = new Map<string, string[]>();
+  const htmlCache = new Map<string, string>();
+  const itemByDomId = new Map<string, HTMLElement>();
   let mini: MiniSearch<Entry> | null = null;
 
   function escapeHtml(s: string): string {
@@ -56,57 +62,297 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     );
   }
 
-  function render(list: Entry[]): void {
-    if (list.length === 0) {
-      results.innerHTML = '';
-      empty.hidden = false;
-      return;
-    }
-    empty.hidden = true;
-    results.innerHTML = list
-      .map((e) => {
-        const meta =
-          (e.type === 'reading' || e.type === 'link') && e.source
-            ? `<span class="source">${escapeHtml(e.source)}</span>`
-            : e.tags.length
-              ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
-              : '';
-        const body = e.excerpt ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>` : '';
-        return `
-          <a href="${e.href}" class="item">
-            <div class="meta">
-              <div class="meta-left">
-                <span class="type type-${e.type}">${e.type}</span>
-                ${meta}
-              </div>
-              <time>${e.date}</time>
-            </div>
-            <h2 class="title">${escapeHtml(e.title)}</h2>
-            ${body}
-          </a>
-        `;
-      })
-      .join('');
+  function domIdFor(entryId: string): string {
+    return `item-${entryId.replace(/\//g, '-')}`;
   }
 
-  function update(): void {
+  function buildItem(e: Entry, index: number): HTMLElement {
+    const art = document.createElement('article');
+    art.className = 'item';
+    art.id = domIdFor(e.id);
+    art.dataset.id = e.id;
+    art.style.order = String(index);
+
+    const metaRight =
+      (e.type === 'reading' || e.type === 'link') && e.source
+        ? `<span class="source">${escapeHtml(e.source)}</span>`
+        : e.tags.length
+          ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
+          : '';
+
+    const excerptLine = e.excerpt ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>` : '';
+
+    art.innerHTML = `
+      <button class="item-header" type="button" aria-expanded="false" aria-controls="${domIdFor(e.id)}-body">
+        <div class="meta">
+          <div class="meta-left">
+            <span class="type type-${e.type}">${e.type}</span>
+            ${metaRight}
+          </div>
+          <time>${e.date}</time>
+        </div>
+        <h2 class="title">${escapeHtml(e.title)}</h2>
+        ${excerptLine}
+        <span class="toggle-indicator" aria-hidden="true">▾</span>
+      </button>
+      <section class="item-body" id="${domIdFor(e.id)}-body" hidden>
+        <div class="item-content" data-content></div>
+        <div class="item-footer">
+          <a class="permalink" href="${e.href}">個別ページで開く →</a>
+        </div>
+        <div class="item-minigraph" data-minigraph></div>
+      </section>
+    `;
+
+    const header = art.querySelector('.item-header') as HTMLButtonElement;
+    header.addEventListener('click', () => toggleItem(art));
+    return art;
+  }
+
+  async function toggleItem(art: HTMLElement): Promise<void> {
+    const header = art.querySelector('.item-header') as HTMLButtonElement;
+    const body = art.querySelector('.item-body') as HTMLElement;
+    const isOpen = header.getAttribute('aria-expanded') === 'true';
+    if (isOpen) {
+      header.setAttribute('aria-expanded', 'false');
+      body.hidden = true;
+      return;
+    }
+    header.setAttribute('aria-expanded', 'true');
+    body.hidden = false;
+
+    const id = art.dataset.id!;
+    const entry = byId.get(id);
+    if (!entry) return;
+
+    const contentEl = art.querySelector('[data-content]') as HTMLElement;
+    if (!contentEl.dataset.loaded) {
+      contentEl.innerHTML = '<p class="content-placeholder">loading…</p>';
+      try {
+        const html = await fetchDetailContent(entry.href);
+        contentEl.innerHTML = html;
+        contentEl.dataset.loaded = '1';
+      } catch {
+        contentEl.innerHTML = '<p class="content-placeholder">failed to load.</p>';
+      }
+    }
+
+    const graphEl = art.querySelector('[data-minigraph]') as HTMLElement;
+    if (!graphEl.dataset.rendered) {
+      graphEl.innerHTML = renderMiniGraph(id);
+      graphEl.dataset.rendered = '1';
+      graphEl.querySelectorAll<HTMLElement>('[data-target]').forEach((el) => {
+        el.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const target = el.dataset.target;
+          if (target) jumpTo(target);
+        });
+      });
+    }
+  }
+
+  async function fetchDetailContent(href: string): Promise<string> {
+    if (htmlCache.has(href)) return htmlCache.get(href)!;
+    const res = await fetch(href);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const article = doc.querySelector('article.detail');
+    if (!article) throw new Error('detail not found');
+    article.querySelectorAll('.meta, .title, .follows, .tags').forEach((el) => el.remove());
+    const html = article.innerHTML.trim();
+    htmlCache.set(href, html);
+    return html;
+  }
+
+  type SubgraphNode = Entry;
+  type SubgraphEdge = { from: string; to: string };
+
+  function buildSubgraph(centerId: string, depth: number): { nodes: SubgraphNode[]; edges: SubgraphEdge[] } {
+    const visited = new Set<string>();
+    visited.add(centerId);
+    let frontier = [centerId];
+    for (let d = 0; d < depth; d++) {
+      const next: string[] = [];
+      for (const id of frontier) {
+        const e = byId.get(id);
+        if (!e) continue;
+        for (const p of e.follows) {
+          if (byId.has(p) && !visited.has(p)) {
+            visited.add(p);
+            next.push(p);
+          }
+        }
+        for (const c of childrenMap.get(id) ?? []) {
+          if (!visited.has(c)) {
+            visited.add(c);
+            next.push(c);
+          }
+        }
+      }
+      if (next.length === 0) break;
+      frontier = next;
+    }
+    const nodes: SubgraphNode[] = [];
+    for (const id of visited) {
+      const e = byId.get(id);
+      if (e) nodes.push(e);
+    }
+    const edges: SubgraphEdge[] = [];
+    for (const n of nodes) {
+      for (const p of n.follows) {
+        if (visited.has(p)) edges.push({ from: p, to: n.id });
+      }
+    }
+    return { nodes, edges };
+  }
+
+  function renderMiniGraph(centerId: string): string {
+    const { nodes, edges } = buildSubgraph(centerId, HOP_DEPTH);
+    if (nodes.length <= 1) {
+      return '<p class="minigraph-empty">このメモにつながっている他のメモはありません。</p>';
+    }
+
+    // newer on the left (date desc)
+    nodes.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? -1 : 1));
+
+    const paddingX = 36;
+    const spacing = 140;
+    const width = paddingX * 2 + Math.max(0, nodes.length - 1) * spacing;
+    const height = 96;
+    const y = height / 2;
+    const radius = 6;
+    const centerRadius = 9;
+
+    const xByKey = new Map<string, number>();
+    nodes.forEach((n, i) => xByKey.set(n.id, paddingX + i * spacing));
+
+    const edgePath = (x1: number, x2: number): string => {
+      const dx = (x2 - x1) * 0.5;
+      return `M ${x1.toFixed(2)} ${y} C ${(x1 + dx).toFixed(2)} ${y} ${(x2 - dx).toFixed(2)} ${y} ${x2.toFixed(2)} ${y}`;
+    };
+
+    const edgeMarkup = edges
+      .map((e) => {
+        const x1 = xByKey.get(e.from);
+        const x2 = xByKey.get(e.to);
+        if (x1 === undefined || x2 === undefined) return '';
+        return `<path class="mini-edge" d="${edgePath(x1, x2)}" />`;
+      })
+      .join('');
+
+    const shortTitle = (t: string): string => (t.length > 16 ? `${t.slice(0, 15)}…` : t);
+
+    const nodeMarkup = nodes
+      .map((n) => {
+        const x = xByKey.get(n.id)!;
+        const isCenter = n.id === centerId;
+        const r = isCenter ? centerRadius : radius;
+        const classes = ['mini-node', `mini-${n.type}`];
+        if (isCenter) classes.push('mini-center');
+        const label = escapeHtml(shortTitle(n.title));
+        const fullTitle = escapeHtml(`${n.title} — ${n.date}`);
+        return `
+          <g class="${classes.join(' ')}" ${isCenter ? '' : `data-target="${n.id}"`} tabindex="${isCenter ? -1 : 0}" role="${isCenter ? 'img' : 'button'}">
+            <circle cx="${x}" cy="${y}" r="${r}"></circle>
+            <text x="${x}" y="${y - r - 8}" class="mini-label">${label}</text>
+            <text x="${x}" y="${y + r + 14}" class="mini-date">${n.date}</text>
+            <title>${fullTitle}</title>
+          </g>`;
+      })
+      .join('');
+
+    return `
+      <div class="minigraph-heading">
+        <span>つながり</span>
+        <span class="minigraph-direction">◀ newer &nbsp;·&nbsp; older ▶</span>
+      </div>
+      <div class="minigraph-scroll">
+        <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="minigraph-svg" role="img" aria-label="つながっているメモ">
+          <g>${edgeMarkup}</g>
+          <g>${nodeMarkup}</g>
+        </svg>
+      </div>
+    `;
+  }
+
+  function jumpTo(entryId: string): void {
+    const domId = domIdFor(entryId);
+    const target = itemByDomId.get(domId);
+    if (!target) return;
+    if (target.hidden) {
+      input.value = '';
+      applyFilter();
+    }
+    const header = target.querySelector('.item-header') as HTMLButtonElement;
+    const expanded = header.getAttribute('aria-expanded') === 'true';
+    if (!expanded) {
+      void toggleItem(target);
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function applyFilter(): void {
     if (!mini) return;
     const q = input.value.trim();
-    let list: Entry[];
     if (!q) {
-      list = entries;
-    } else {
-      const hits = mini.search(q);
-      list = hits.map((h) => byId.get(String(h.id))!).filter(Boolean);
+      let i = 0;
+      for (const e of entries) {
+        const el = itemByDomId.get(domIdFor(e.id));
+        if (!el) continue;
+        el.hidden = false;
+        el.style.order = String(i++);
+      }
+      count.textContent = String(entries.length);
+      empty.hidden = entries.length > 0;
+      return;
     }
-    count.textContent = String(list.length);
-    render(list);
+    const hits = mini.search(q);
+    const matched = new Set<string>();
+    for (let rank = 0; rank < hits.length; rank++) {
+      const id = String(hits[rank].id);
+      matched.add(id);
+      const el = itemByDomId.get(domIdFor(id));
+      if (el) {
+        el.hidden = false;
+        el.style.order = String(rank);
+      }
+    }
+    let trailing = hits.length;
+    for (const e of entries) {
+      if (matched.has(e.id)) continue;
+      const el = itemByDomId.get(domIdFor(e.id));
+      if (!el) continue;
+      el.hidden = true;
+      el.style.order = String(trailing++);
+    }
+    count.textContent = String(matched.size);
+    empty.hidden = matched.size > 0;
+  }
+
+  function renderAll(): void {
+    results.innerHTML = '';
+    itemByDomId.clear();
+    const frag = document.createDocumentFragment();
+    entries.forEach((e, i) => {
+      const el = buildItem(e, i);
+      itemByDomId.set(el.id, el);
+      frag.appendChild(el);
+    });
+    results.appendChild(frag);
   }
 
   async function init(): Promise<void> {
     const res = await fetch('/search-index.json');
     entries = (await res.json()) as Entry[];
-    byId = new Map(entries.map((e) => [e.id, e]));
+    for (const e of entries) byId.set(e.id, e);
+    for (const e of entries) {
+      for (const p of e.follows) {
+        const arr = childrenMap.get(p);
+        if (arr) arr.push(e.id);
+        else childrenMap.set(p, [e.id]);
+      }
+    }
 
     mini = new MiniSearch<Entry>({
       idField: 'id',
@@ -128,12 +374,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     });
     mini.addAll(entries);
 
+    renderAll();
     loading.hidden = true;
     count.textContent = String(entries.length);
-    update();
+    applyFilter();
   }
 
-  input.addEventListener('input', update);
+  input.addEventListener('input', applyFilter);
   init().catch((err) => {
     loading.textContent = 'failed to load index.';
     console.error(err);
@@ -174,6 +421,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     color: var(--faintest);
   }
   .stream {
+    display: flex;
+    flex-direction: column;
     border-bottom: 1px solid var(--hairline);
   }
   .stream:empty {
@@ -188,14 +437,29 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     color: var(--faint);
   }
 
+  /* accordion item */
   .stream :global(.item) {
-    display: block;
-    padding: 24px 0;
     border-top: 1px solid var(--hairline);
+  }
+  .stream :global(.item[hidden]) {
+    display: none;
+  }
+  .stream :global(.item-header) {
+    all: unset;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 24px 0;
+    cursor: pointer;
+    position: relative;
     color: var(--ink);
   }
-  .stream :global(.item:hover) {
+  .stream :global(.item-header:hover) {
     background: rgba(255, 255, 255, 0.5);
+  }
+  .stream :global(.item-header:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
   }
   .stream :global(.meta) {
     display: flex;
@@ -220,7 +484,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .stream :global(.type-photo) { color: var(--photo); }
   .stream :global(.type-link) { color: var(--link); }
   .stream :global(.tags),
-  .stream :global(time) {
+  .stream :global(.item-header time) {
     font-family: var(--mono);
     font-size: 11px;
     color: var(--faint);
@@ -234,11 +498,237 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     font-weight: 600;
     line-height: 1.45;
     color: var(--ink);
+    margin: 0;
   }
   .stream :global(.excerpt) {
     margin-top: 8px;
     font-size: 14px;
     color: var(--muted);
     line-height: 1.75;
+  }
+  .stream :global(.toggle-indicator) {
+    position: absolute;
+    top: 24px;
+    right: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    transition: transform 0.15s ease;
+  }
+  .stream :global(.item-header[aria-expanded='true'] .toggle-indicator) {
+    transform: rotate(180deg);
+  }
+  .stream :global(.item-header[aria-expanded='true']) {
+    padding-bottom: 8px;
+  }
+  .stream :global(.item-header[aria-expanded='true'] .excerpt) {
+    display: none;
+  }
+
+  /* expanded body */
+  .stream :global(.item-body) {
+    padding: 0 0 28px;
+  }
+  .stream :global(.content-placeholder) {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+    padding: 16px 0;
+  }
+
+  /* reused typography / media */
+  .stream :global(.item-content) {
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--ink-soft);
+  }
+  .stream :global(.item-content p) { margin: 14px 0; }
+  .stream :global(.item-content h2) {
+    margin: 24px 0 10px;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .stream :global(.item-content h3) {
+    margin: 18px 0 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .stream :global(.item-content img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 2px;
+  }
+  .stream :global(.item-content blockquote) {
+    border-left: 2px solid var(--hairline);
+    margin: 16px 0;
+    padding: 4px 16px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .stream :global(.item-content code) {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface);
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+  .stream :global(.item-content pre) {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    padding: 12px 14px;
+    overflow-x: auto;
+  }
+  .stream :global(.item-content pre code) {
+    background: transparent;
+    padding: 0;
+  }
+  .stream :global(.item-content a) {
+    color: var(--ink);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .stream :global(.item-content a:hover) {
+    border-bottom-color: var(--ink);
+  }
+  .stream :global(.item-content .photo img) {
+    width: 100%;
+  }
+  .stream :global(.item-content .link-out) {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 14px;
+    margin: 4px 0 12px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-all;
+    text-decoration: none;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .stream :global(.item-content .link-out:hover) {
+    border-color: var(--link);
+  }
+  .stream :global(.item-content .link-arrow) {
+    font-family: var(--mono);
+    color: var(--link);
+    flex-shrink: 0;
+  }
+  .stream :global(.item-content .link-url) {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .stream :global(.item-content .link-quote) {
+    margin: 0 0 16px;
+    padding: 4px 16px;
+    border-left: 2px solid var(--hairline);
+    color: var(--muted);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .stream :global(.item-content .source) {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .stream :global(.item-footer) {
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .stream :global(.item-footer .permalink) {
+    color: var(--faint);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--hairline);
+    padding-bottom: 1px;
+  }
+  .stream :global(.item-footer .permalink:hover) {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+
+  /* mini graph */
+  .stream :global(.item-minigraph) {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--hairline);
+  }
+  .stream :global(.minigraph-heading) {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin-bottom: 10px;
+  }
+  .stream :global(.minigraph-direction) {
+    color: var(--faintest);
+  }
+  .stream :global(.minigraph-empty) {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    padding: 8px 0;
+  }
+  .stream :global(.minigraph-scroll) {
+    overflow-x: auto;
+    margin: 0 -4px;
+    padding: 4px;
+  }
+  .stream :global(.minigraph-svg) {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+  }
+  .stream :global(.mini-edge) {
+    fill: none;
+    stroke: var(--faint);
+    stroke-width: 1.1;
+    opacity: 0.6;
+  }
+  .stream :global(.mini-node circle) {
+    stroke: var(--surface);
+    stroke-width: 2;
+    transition: r 0.1s ease;
+  }
+  .stream :global(.mini-node[role='button']) {
+    cursor: pointer;
+  }
+  .stream :global(.mini-node[role='button']:hover circle),
+  .stream :global(.mini-node[role='button']:focus-visible circle) {
+    r: 8;
+  }
+  .stream :global(.mini-note circle) { fill: var(--note); }
+  .stream :global(.mini-reading circle) { fill: var(--reading); }
+  .stream :global(.mini-photo circle) { fill: var(--photo); }
+  .stream :global(.mini-link circle) { fill: var(--link); }
+  .stream :global(.mini-center circle) {
+    stroke: var(--ink);
+    stroke-width: 2;
+  }
+  .stream :global(.mini-label) {
+    font-family: var(--sans);
+    font-size: 11px;
+    fill: var(--ink-soft);
+    text-anchor: middle;
+  }
+  .stream :global(.mini-center .mini-label) {
+    fill: var(--ink);
+    font-weight: 600;
+  }
+  .stream :global(.mini-date) {
+    font-family: var(--mono);
+    font-size: 10px;
+    fill: var(--faint);
+    text-anchor: middle;
   }
 </style>
