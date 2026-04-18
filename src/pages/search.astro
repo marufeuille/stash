@@ -216,8 +216,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     // newer on the left (date desc)
     nodes.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? -1 : 1));
 
-    const paddingX = 36;
-    const spacing = 140;
+    const paddingX = 40;
+    const spacing = 200;
     const width = paddingX * 2 + Math.max(0, nodes.length - 1) * spacing;
     const height = 96;
     const y = height / 2;
@@ -241,7 +241,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       })
       .join('');
 
-    const shortTitle = (t: string): string => (t.length > 16 ? `${t.slice(0, 15)}…` : t);
+    const shortTitle = (t: string): string => (t.length > 12 ? `${t.slice(0, 11)}…` : t);
 
     const nodeMarkup = nodes
       .map((n) => {
@@ -263,9 +263,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       .join('');
 
     return `
-      <div class="minigraph-heading">
-        <span>つながり</span>
-        <span class="minigraph-direction">◀ newer &nbsp;·&nbsp; older ▶</span>
+      <div class="minigraph-heading">つながり</div>
+      <div class="minigraph-direction" aria-hidden="true">
+        <span>◀ recent</span>
+        <span>older ▶</span>
       </div>
       <div class="minigraph-scroll">
         <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="minigraph-svg" role="img" aria-label="つながっているメモ">
@@ -662,15 +663,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     border-top: 1px dashed var(--hairline);
   }
   .stream :global(.minigraph-heading) {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    margin-bottom: 6px;
+  }
+  .stream :global(.minigraph-direction) {
     display: flex;
     justify-content: space-between;
     font-family: var(--mono);
     font-size: 11px;
     color: var(--faint);
-    margin-bottom: 10px;
-  }
-  .stream :global(.minigraph-direction) {
-    color: var(--faintest);
+    margin-bottom: 6px;
   }
   .stream :global(.minigraph-empty) {
     font-family: var(--mono);
