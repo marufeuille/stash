@@ -146,7 +146,8 @@ const baselineY = layout.height - 24;
             <a href={n.href}>
               <g class={`node node-${n.type}`}>
                 <circle cx={n.x} cy={n.y} r={nodeRadius} />
-                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label">{shortTitle(n.title)}</text>
+                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label node-label-short">{shortTitle(n.title)}</text>
+                <text x={n.x + nodeRadius + 6} y={n.y + 3} class="node-label node-label-full">{n.title}</text>
                 <title>{`${n.type} — ${n.title} (${n.date.toISOString().slice(0, 10)})`}</title>
               </g>
             </a>
@@ -238,9 +239,23 @@ const baselineY = layout.height - 24;
     font-family: var(--sans);
     font-size: 11px;
     fill: var(--ink-soft);
-    pointer-events: none;
   }
-  .graph-svg :global(.node:hover .node-label) {
+  .graph-svg :global(.node-label-full) {
+    display: none;
+    paint-order: stroke fill;
+    stroke: var(--surface);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .graph-svg :global(.node:hover) {
+    /* raise hovered node above siblings so the expanded label stays readable */
+    isolation: isolate;
+  }
+  .graph-svg :global(.node:hover .node-label-short) {
+    display: none;
+  }
+  .graph-svg :global(.node:hover .node-label-full) {
+    display: inline;
     fill: var(--ink);
   }
   .graph-svg :global(a) {
