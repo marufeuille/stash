@@ -17,6 +17,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </span>
   </div>
 
+  <div class="tag-filter" id="tag-filter" hidden></div>
+
   <main class="stream" id="results"></main>
 
   <p class="empty" id="empty" hidden>no fragments match.</p>
@@ -47,6 +49,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   const count = document.getElementById('count')!;
   const empty = document.getElementById('empty')!;
   const loading = document.getElementById('loading')!;
+  const tagFilterEl = document.getElementById('tag-filter')!;
 
   let entries: Entry[] = [];
   const byId = new Map<string, Entry>();
@@ -54,6 +57,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   const htmlCache = new Map<string, string>();
   const itemByDomId = new Map<string, HTMLElement>();
   let mini: MiniSearch<Entry> | null = null;
+
+  const INITIAL_TAG_LIMIT = 20;
+  const selectedTags = new Set<string>();
+  let tagCounts: Array<[string, number]> = [];
+  let tagsExpanded = false;
 
   function escapeHtml(s: string): string {
     return s.replace(
@@ -303,10 +311,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function matchesSelectedTags(e: Entry): boolean {
+    for (const t of selectedTags) {
+      if (!e.tags.includes(t)) return false;
+    }
+    return true;
+  }
+
   function applyFilter(): void {
     if (!mini) return;
     const q = input.value.trim();
-    if (!q) {
+    const hasQuery = q.length > 0;
+    const hasTags = selectedTags.size > 0;
+
+    if (!hasQuery && !hasTags) {
       let i = 0;
       for (const e of entries) {
         const el = itemByDomId.get(domIdFor(e.id));
@@ -318,18 +336,30 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       empty.hidden = entries.length > 0;
       return;
     }
-    const hits = mini.search(q);
-    const matched = new Set<string>();
-    for (let rank = 0; rank < hits.length; rank++) {
-      const id = String(hits[rank].id);
-      matched.add(id);
+
+    let orderedIds: string[];
+    if (hasQuery) {
+      const hits = mini.search(q);
+      orderedIds = hits.map((h) => String(h.id));
+      if (hasTags) {
+        orderedIds = orderedIds.filter((id) => {
+          const e = byId.get(id);
+          return e ? matchesSelectedTags(e) : false;
+        });
+      }
+    } else {
+      orderedIds = entries.filter(matchesSelectedTags).map((e) => e.id);
+    }
+
+    const matched = new Set(orderedIds);
+    orderedIds.forEach((id, rank) => {
       const el = itemByDomId.get(domIdFor(id));
       if (el) {
         el.hidden = false;
         el.style.order = String(rank);
       }
-    }
-    let trailing = hits.length;
+    });
+    let trailing = orderedIds.length;
     for (const e of entries) {
       if (matched.has(e.id)) continue;
       const el = itemByDomId.get(domIdFor(e.id));
@@ -339,6 +369,63 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     }
     count.textContent = String(matched.size);
     empty.hidden = matched.size > 0;
+  }
+
+  function renderTagFilter(): void {
+    if (tagCounts.length === 0) {
+      tagFilterEl.hidden = true;
+      tagFilterEl.innerHTML = '';
+      return;
+    }
+    tagFilterEl.hidden = false;
+
+    const hiddenCount = Math.max(0, tagCounts.length - INITIAL_TAG_LIMIT);
+    const visible = tagsExpanded ? tagCounts : tagCounts.slice(0, INITIAL_TAG_LIMIT);
+    const extras: string[] = [];
+    if (!tagsExpanded) {
+      for (const t of selectedTags) {
+        if (!visible.some(([tag]) => tag === t)) {
+          const c = tagCounts.find(([tag]) => tag === t)?.[1] ?? 0;
+          extras.push(`<button type="button" class="tag-chip is-active" data-tag="${escapeHtml(t)}" aria-pressed="true">${escapeHtml(t)}<span class="tag-count">${c}</span></button>`);
+        }
+      }
+    }
+
+    const chips = visible
+      .map(([t, c]) => {
+        const active = selectedTags.has(t);
+        return `<button type="button" class="tag-chip${active ? ' is-active' : ''}" data-tag="${escapeHtml(t)}" aria-pressed="${active}">${escapeHtml(t)}<span class="tag-count">${c}</span></button>`;
+      })
+      .join('');
+
+    const more = hiddenCount > 0
+      ? `<button type="button" class="tag-more" data-role="tag-more">${tagsExpanded ? '− less' : `+ ${hiddenCount} more`}</button>`
+      : '';
+
+    const clear = selectedTags.size > 0
+      ? `<button type="button" class="tag-clear" data-role="tag-clear">clear</button>`
+      : '';
+
+    tagFilterEl.innerHTML = extras.join('') + chips + more + clear;
+
+    tagFilterEl.querySelectorAll<HTMLButtonElement>('.tag-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.tag!;
+        if (selectedTags.has(t)) selectedTags.delete(t);
+        else selectedTags.add(t);
+        renderTagFilter();
+        applyFilter();
+      });
+    });
+    tagFilterEl.querySelector<HTMLButtonElement>('[data-role="tag-more"]')?.addEventListener('click', () => {
+      tagsExpanded = !tagsExpanded;
+      renderTagFilter();
+    });
+    tagFilterEl.querySelector<HTMLButtonElement>('[data-role="tag-clear"]')?.addEventListener('click', () => {
+      selectedTags.clear();
+      renderTagFilter();
+      applyFilter();
+    });
   }
 
   function renderAll(): void {
@@ -385,7 +472,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     });
     mini.addAll(entries);
 
+    const counts = new Map<string, number>();
+    for (const e of entries) {
+      for (const t of e.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    tagCounts = [...counts.entries()].sort((a, b) =>
+      b[1] - a[1] || a[0].localeCompare(b[0]),
+    );
+
     renderAll();
+    renderTagFilter();
     loading.hidden = true;
     count.textContent = String(entries.length);
     applyFilter();
@@ -431,6 +527,61 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     font-size: 11px;
     color: var(--faintest);
   }
+  .tag-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: -12px 0 24px;
+  }
+  .tag-filter :global(.tag-chip) {
+    all: unset;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .tag-filter :global(.tag-chip:hover) {
+    color: var(--ink);
+    border-color: var(--ink-soft);
+  }
+  .tag-filter :global(.tag-chip:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+  .tag-filter :global(.tag-chip.is-active) {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+  }
+  .tag-filter :global(.tag-count) {
+    font-size: 10px;
+    color: var(--faint);
+  }
+  .tag-filter :global(.tag-chip.is-active .tag-count) {
+    color: var(--surface);
+    opacity: 0.7;
+  }
+  .tag-filter :global(.tag-more),
+  .tag-filter :global(.tag-clear) {
+    all: unset;
+    padding: 4px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    cursor: pointer;
+  }
+  .tag-filter :global(.tag-more:hover),
+  .tag-filter :global(.tag-clear:hover) {
+    color: var(--ink);
+  }
+
   .stream {
     display: flex;
     flex-direction: column;
