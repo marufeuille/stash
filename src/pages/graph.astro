@@ -23,11 +23,27 @@ const layout = layoutGraph(graph, {
 });
 
 const nodeRadius = 6;
+const labelGap = 6; // matches node-label x offset (nodeRadius + 6)
+const arrowGap = 6; // extra space between label right edge and arrowhead
 const nodesByKey = new Map(layout.nodes.map((n) => [n.key, n]));
 
 function shortTitle(title: string, max = 18): string {
   const t = title.trim();
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+// Approximate pixel width of a label rendered at font-size 11px. CJK / full-
+// width characters are treated as ~11px and Latin characters as ~6.5px, which
+// is close enough to route edges past a label without measuring in the DOM.
+function estimateLabelWidth(label: string): number {
+  let w = 0;
+  for (const c of label) {
+    const code = c.charCodeAt(0);
+    if (code > 0x2e80) w += 11;
+    else if (code > 0x007e) w += 7.5;
+    else w += 6.5;
+  }
+  return w;
 }
 
 function edgePath(fromX: number, fromY: number, toX: number, toY: number): string {
@@ -48,7 +64,15 @@ const edgeSegments = layout.edges
     // Newer (to/child) is on the left, older (from/parent) is on the right.
     const fromX = from.x - nodeRadius;
     const fromY = from.y;
-    const toX = to.x + nodeRadius;
+    // End the arrow just past the child's label so the line doesn't pass
+    // through the label text. If the label would reach too close to the
+    // parent (e.g. a long title on a tight lane), fall back to a position
+    // just before the parent's circle so the arrow still has room.
+    const labelRightX = to.x + nodeRadius + labelGap + estimateLabelWidth(shortTitle(to.title));
+    const desiredToX = labelRightX + arrowGap;
+    const maxToX = from.x - nodeRadius - arrowGap;
+    const minToX = to.x + nodeRadius;
+    const toX = Math.max(minToX, Math.min(desiredToX, maxToX));
     const toY = to.y;
     return {
       d: edgePath(fromX, fromY, toX, toY),
