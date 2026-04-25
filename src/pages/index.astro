@@ -48,7 +48,7 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
       <div class="overlay-meta">
         <span class="overlay-type">new</span>
       </div>
-      <nav class="picker-grid">
+      <nav class="picker-list">
         <a href="/compose/note" class="picker-btn picker-note">note</a>
         <a href="/compose/reading" class="picker-btn picker-reading">reading</a>
         <a href="/compose/link" class="picker-btn picker-link">link</a>
@@ -317,31 +317,28 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
   }
 
   .picker-panel {
-    max-width: 380px;
+    max-width: 300px;
   }
-  .picker-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding-top: 8px;
+  .picker-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--hairline);
+    margin-top: 16px;
   }
   .picker-btn {
     display: block;
-    padding: 18px 12px;
-    border: 1px solid var(--hairline);
-    border-radius: 2px;
-    text-align: center;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--hairline);
     font-family: var(--mono);
     font-size: 13px;
     color: var(--faint);
-    transition: border-color 0.12s ease, color 0.12s ease;
     text-decoration: none;
+    transition: color 0.12s ease;
   }
-  .picker-btn:hover { color: var(--ink); border-color: var(--faint); }
-  .picker-note:hover    { color: var(--note);    border-color: var(--note); }
-  .picker-reading:hover { color: var(--reading); border-color: var(--reading); }
-  .picker-link:hover    { color: var(--link);    border-color: var(--link); }
-  .picker-photo:hover   { color: var(--photo);   border-color: var(--photo); }
+  .picker-note:hover    { color: var(--note); }
+  .picker-reading:hover { color: var(--reading); }
+  .picker-link:hover    { color: var(--link); }
+  .picker-photo:hover   { color: var(--photo); }
 
   @keyframes fade {
     from { opacity: 0; }
