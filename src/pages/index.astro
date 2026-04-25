@@ -40,6 +40,23 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
       </div>
     </div>
   </div>
+
+  <div id="picker-overlay" class="overlay" hidden aria-hidden="true">
+    <div class="overlay-backdrop" data-close></div>
+    <div class="overlay-panel picker-panel" role="dialog" aria-modal="true" aria-label="new fragment">
+      <button class="overlay-close" type="button" data-close aria-label="close">×</button>
+      <div class="overlay-meta">
+        <span class="overlay-type">stash a fragment</span>
+      </div>
+      <nav class="picker-list">
+        <a href="/compose/note" class="picker-btn picker-note">note</a>
+        <a href="/compose/reading" class="picker-btn picker-reading">reading</a>
+        <a href="/compose/link" class="picker-btn picker-link">link</a>
+        <a href="/compose/photo" class="picker-btn picker-photo">photo</a>
+      </nav>
+    </div>
+  </div>
+
   <script is:inline>
     (function () {
       var el = document.getElementById('capture');
@@ -50,74 +67,49 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
         history.replaceState(null, '', location.pathname);
       }
       var isOwner = localStorage.getItem('stashOwner') === '1';
-      var overlay = document.getElementById('about-overlay');
-      function openAbout() {
-        if (!overlay) return;
-        overlay.hidden = false;
-        overlay.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
+
+      function makeOverlayToggle(id) {
+        var overlay = document.getElementById(id);
+        function open() {
+          if (!overlay) return;
+          overlay.hidden = false;
+          overlay.setAttribute('aria-hidden', 'false');
+          document.body.style.overflow = 'hidden';
+        }
+        function close() {
+          if (!overlay) return;
+          overlay.hidden = true;
+          overlay.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+        }
+        if (overlay) {
+          overlay.addEventListener('click', function (e) {
+            if (e.target instanceof Element && e.target.hasAttribute('data-close')) close();
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !overlay.hidden) close();
+          });
+        }
+        return { open: open, close: close };
       }
-      function closeAbout() {
-        if (!overlay) return;
-        overlay.hidden = true;
-        overlay.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-      }
-      if (overlay) {
-        overlay.addEventListener('click', function (e) {
-          if (e.target instanceof Element && e.target.hasAttribute('data-close')) {
-            closeAbout();
-          }
-        });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape' && !overlay.hidden) closeAbout();
-        });
-      }
+
+      var about = makeOverlayToggle('about-overlay');
+      var picker = makeOverlayToggle('picker-overlay');
+
       if (!isOwner) {
-        el.addEventListener('click', function (e) {
-          e.preventDefault();
-          openAbout();
-        });
+        el.addEventListener('click', function (e) { e.preventDefault(); about.open(); });
         document.addEventListener('keydown', function (e) {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-            e.preventDefault();
-            openAbout();
-          }
+          if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); about.open(); }
         });
         return;
       }
+
       el.removeAttribute('aria-disabled');
       el.removeAttribute('tabindex');
       el.classList.add('is-active');
-      function pad(n) { return String(n).padStart(2, '0'); }
-      function buildHref() {
-        var d = new Date();
-        var name =
-          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-          '_' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
-        var dateStr =
-          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-        var content =
-          '---\n' +
-          'type: note\n' +
-          'title: ""\n' +
-          'date: ' + dateStr + '\n' +
-          'tags: []\n' +
-          'draft: true\n' +
-          '---\n\n';
-        return 'obsidian://new?vault=stash&file=' +
-          encodeURIComponent('note/' + name) +
-          '&content=' + encodeURIComponent(content);
-      }
-      el.addEventListener('click', function (e) {
-        el.href = buildHref();
-      });
+      el.addEventListener('click', function (e) { e.preventDefault(); picker.open(); });
       document.addEventListener('keydown', function (e) {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-          e.preventDefault();
-          el.href = buildHref();
-          location.href = el.href;
-        }
+        if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); picker.open(); }
       });
     })();
   </script>
@@ -323,6 +315,30 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
     font-family: var(--mono);
     font-size: 13px;
   }
+
+  .picker-panel {
+    max-width: 300px;
+  }
+  .picker-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--hairline);
+    margin-top: 16px;
+  }
+  .picker-btn {
+    display: block;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--faint);
+    text-decoration: none;
+    transition: color 0.12s ease;
+  }
+  .picker-note:hover    { color: var(--note); }
+  .picker-reading:hover { color: var(--reading); }
+  .picker-link:hover    { color: var(--link); }
+  .picker-photo:hover   { color: var(--photo); }
 
   @keyframes fade {
     from { opacity: 0; }
