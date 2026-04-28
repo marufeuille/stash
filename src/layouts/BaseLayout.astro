@@ -22,6 +22,13 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <!-- ちらつき防止: レンダリング前にテーマを適用 -->
+    <script is:inline>
+      (function () {
+        const t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
@@ -58,12 +65,41 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
               {item.label}
             </a>
           ))}
+          <button id="theme-toggle" class="theme-toggle" aria-label="テーマ切り替え">
+            <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
         </nav>
       </header>
       <slot />
     </div>
   </body>
 </html>
+
+<script>
+  const btn = document.getElementById('theme-toggle');
+  btn?.addEventListener('click', () => {
+    const isDark =
+      document.documentElement.dataset.theme === 'dark' ||
+      (!document.documentElement.dataset.theme &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('theme', next);
+  });
+</script>
 
 <style is:global>
   :root {
@@ -85,8 +121,9 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
       'Segoe UI', Roboto, sans-serif;
   }
 
+  /* OS設定がダーク かつ 手動でライトを選んでいない */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme='light']) {
       --bg: #111110;
       --surface: #1c1b19;
       --ink: #f0ede6;
@@ -101,6 +138,23 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
       --link: #b07ac0;
       --hover-bg: rgba(255, 255, 255, 0.04);
     }
+  }
+
+  /* 手動でダークを選択 */
+  :root[data-theme='dark'] {
+    --bg: #111110;
+    --surface: #1c1b19;
+    --ink: #f0ede6;
+    --ink-soft: #c8c5be;
+    --muted: #9a9790;
+    --faint: #6b6860;
+    --faintest: #403e38;
+    --hairline: #2d2c28;
+    --note: #5da870;
+    --reading: #5a8fc0;
+    --photo: #c0a058;
+    --link: #b07ac0;
+    --hover-bg: rgba(255, 255, 255, 0.04);
   }
 
   * {
@@ -148,6 +202,7 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
   .nav {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 20px;
   }
   .nav-link {
@@ -162,6 +217,37 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
   .nav-link.active {
     color: var(--ink);
   }
+
+  /* テーマトグル */
+  .theme-toggle {
+    all: unset;
+    display: flex;
+    align-items: center;
+    color: var(--faint);
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .theme-toggle:hover {
+    color: var(--ink);
+  }
+
+  /* ライトモード: 月アイコン（→ダークに切り替え）を表示 */
+  .theme-toggle .icon-sun { display: none; }
+  .theme-toggle .icon-moon { display: block; }
+
+  /* OS設定がダーク かつ 手動でライトを選んでいない */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .theme-toggle .icon-sun { display: block; }
+    :root:not([data-theme='light']) .theme-toggle .icon-moon { display: none; }
+  }
+
+  /* 手動でダークを選択 */
+  :root[data-theme='dark'] .theme-toggle .icon-sun { display: block; }
+  :root[data-theme='dark'] .theme-toggle .icon-moon { display: none; }
+
+  /* 手動でライトを選択（OS設定がダークでも上書き） */
+  :root[data-theme='light'] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme='light'] .theme-toggle .icon-moon { display: block; }
 
   @media (max-width: 600px) {
     .shell {
