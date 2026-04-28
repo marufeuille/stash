@@ -79,9 +79,28 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
     --reading: #3a5f8a;
     --photo: #8a6f3a;
     --link: #7a5a8a;
+    --hover-bg: rgba(255, 255, 255, 0.5);
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP',
       'Segoe UI', Roboto, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111110;
+      --surface: #1c1b19;
+      --ink: #f0ede6;
+      --ink-soft: #c8c5be;
+      --muted: #9a9790;
+      --faint: #6b6860;
+      --faintest: #403e38;
+      --hairline: #2d2c28;
+      --note: #5da870;
+      --reading: #5a8fc0;
+      --photo: #c0a058;
+      --link: #b07ac0;
+      --hover-bg: rgba(255, 255, 255, 0.04);
+    }
   }
 
   * {
