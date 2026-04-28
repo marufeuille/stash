@@ -25,8 +25,10 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
     <!-- ちらつき防止: レンダリング前にテーマを適用 -->
     <script is:inline>
       (function () {
-        const t = localStorage.getItem('theme');
-        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+        try {
+          const t = localStorage.getItem('theme');
+          if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+        } catch (_) {}
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -97,7 +99,7 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
         window.matchMedia('(prefers-color-scheme: dark)').matches);
     const next = isDark ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
-    localStorage.setItem('theme', next);
+    try { localStorage.setItem('theme', next); } catch (_) {}
   });
 </script>
 
@@ -229,6 +231,11 @@ const navItems: { key: NonNullable<Props['activeNav']>; label: string; href: str
   }
   .theme-toggle:hover {
     color: var(--ink);
+  }
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 
   /* ライトモード: 月アイコン（→ダークに切り替え）を表示 */
