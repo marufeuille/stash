@@ -126,6 +126,8 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
             tags={d.tags}
             image={d.image}
             alt={d.alt}
+            topic={d.topic}
+            stage={d.stage}
           />
         );
       }
@@ -141,6 +143,8 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
             author={d.author}
             progress={d.progress}
             excerpt={excerpt(post.body)}
+            topic={d.topic}
+            stage={d.stage}
           />
         );
       }
@@ -157,6 +161,8 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
             url={d.url}
             quote={d.quote}
             excerpt={excerpt(post.body)}
+            topic={d.topic}
+            stage={d.stage}
           />
         );
       }
@@ -168,6 +174,8 @@ const aboutTitle = aboutEntry?.data.title ?? 'about stash';
           date={d.date}
           tags={d.tags}
           excerpt={excerpt(post.body)}
+          topic={d.topic}
+          stage={d.stage}
         />
       );
     })}

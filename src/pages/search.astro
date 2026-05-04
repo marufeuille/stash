@@ -31,7 +31,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
   type Entry = {
     id: string;
-    type: 'note' | 'reading' | 'photo' | 'link';
+    type: 'note' | 'reading' | 'photo' | 'link' | 'topic';
     href: string;
     title: string;
     date: string;
@@ -40,6 +40,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     source?: string;
     body: string;
     follows: string[];
+    topic?: string;
+    stage?: string;
   };
 
   const HOP_DEPTH = 2;
@@ -458,7 +460,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     mini = new MiniSearch<Entry>({
       idField: 'id',
-      fields: ['title', 'tags', 'source', 'body'],
+      fields: ['title', 'tags', 'source', 'body', 'topic', 'stage'],
       storeFields: ['id'],
       tokenize: (text) => tokenize(text),
       processTerm: (t) => t,
@@ -468,7 +470,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         return typeof v === 'string' ? v : '';
       },
       searchOptions: {
-        boost: { title: 3, tags: 2, source: 2, body: 1 },
+        boost: { title: 3, tags: 2, source: 2, topic: 2, stage: 2, body: 1 },
         fuzzy: 0.2,
         prefix: true,
         combineWith: 'AND',

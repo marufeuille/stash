@@ -2,6 +2,9 @@ import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
 const followsField = z.array(z.string()).default([]);
+const topicField = z.string().optional();
+const stageField = z.string().optional();
+const summaryField = z.boolean().default(false);
 
 const photo = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './content/photo' }),
@@ -14,6 +17,9 @@ const photo = defineCollection({
       alt: z.string(),
       tags: z.array(z.string()).default([]),
       follows: followsField,
+      topic: topicField,
+      stage: stageField,
+      summary: summaryField,
       draft: z.boolean().default(false),
     }),
 });
@@ -29,6 +35,9 @@ const reading = defineCollection({
     progress: z.string().optional(),
     tags: z.array(z.string()).default([]),
     follows: followsField,
+    topic: topicField,
+    stage: stageField,
+    summary: summaryField,
     draft: z.boolean().default(false),
   }),
 });
@@ -41,6 +50,9 @@ const note = defineCollection({
     date: z.coerce.date(),
     tags: z.array(z.string()).default([]),
     follows: followsField,
+    topic: topicField,
+    stage: stageField,
+    summary: summaryField,
     draft: z.boolean().default(false),
   }),
 });
@@ -55,6 +67,21 @@ const link = defineCollection({
     quote: z.string().optional(),
     tags: z.array(z.string()).default([]),
     follows: followsField,
+    topic: topicField,
+    stage: stageField,
+    summary: summaryField,
+    draft: z.boolean().default(false),
+  }),
+});
+
+const topic = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './content/topic' }),
+  schema: z.object({
+    type: z.literal('topic'),
+    slug: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    stages: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
   }),
 });
@@ -66,4 +93,4 @@ const meta = defineCollection({
   }),
 });
 
-export const collections = { photo, reading, note, link, meta };
+export const collections = { photo, reading, note, link, topic, meta };

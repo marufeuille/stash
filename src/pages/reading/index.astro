@@ -25,6 +25,8 @@ const posts = sortPostsDesc(
         author={post.data.author}
         progress={post.data.progress}
         excerpt={excerpt(post.body)}
+        topic={post.data.topic}
+        stage={post.data.stage}
       />
     ))}
   </main>

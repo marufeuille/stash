@@ -1,0 +1,114 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TopicSection from '../../components/TopicSection.astro';
+import {
+  groupByStage,
+  parentBreakpoints,
+  validateTopicReferences,
+} from '../../lib/topics';
+
+export async function getStaticPaths() {
+  const topics = (await getCollection('topic')).filter((t) => !t.data.draft);
+  return topics.map((topic) => ({
+    params: { slug: topic.data.slug },
+    props: { topic },
+  }));
+}
+
+const { topic } = Astro.props;
+const { Content } = await render(topic);
+
+const [photos, readings, notes, links, allTopics] = await Promise.all([
+  getCollection('photo'),
+  getCollection('reading'),
+  getCollection('note'),
+  getCollection('link'),
+  getCollection('topic'),
+]);
+
+const activePosts = [...photos, ...readings, ...notes, ...links].filter(
+  (p) => !p.data.draft,
+);
+
+validateTopicReferences(activePosts, allTopics);
+
+const topicPosts = activePosts.filter((p) => p.data.topic === topic.data.slug);
+const { groups, uncategorized } = groupByStage(topicPosts, topic.data.stages);
+const breakpoints = parentBreakpoints(topic.data.stages);
+---
+
+<BaseLayout title={`${topic.data.title} — stash`} activeNav="topic">
+  <article class="topic-detail">
+    <header class="header">
+      <span class="type type-topic">topic</span>
+      <h1 class="title">{topic.data.title}</h1>
+      {topic.data.description && (
+        <p class="description">{topic.data.description}</p>
+      )}
+    </header>
+
+    <div class="body">
+      <Content />
+    </div>
+
+    {groups.map((group, i) => (
+      <TopicSection
+        stage={group.stage}
+        entries={group.entries}
+        parentHeading={breakpoints[i]}
+      />
+    ))}
+
+    {uncategorized.length > 0 && (
+      <TopicSection stage="未分類" entries={uncategorized} unstaged={true} />
+    )}
+  </article>
+</BaseLayout>
+
+<style>
+  .topic-detail {
+    padding-top: 8px;
+  }
+  .header {
+    margin-bottom: 24px;
+  }
+  .type {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .title {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin: 8px 0 12px;
+  }
+  .description {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .body {
+    margin: 24px 0;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--ink-soft);
+  }
+  .body :global(p) { margin: 14px 0; }
+  .body :global(h2) {
+    margin: 28px 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .body :global(ul),
+  .body :global(ol) {
+    margin: 14px 0;
+    padding-left: 1.6em;
+  }
+</style>

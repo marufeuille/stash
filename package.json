@@ -9,6 +9,7 @@
     "test": "vitest run",
     "sync-content": "node scripts/sync-content.mjs",
     "generate-summary": "node scripts/generate-recent-summary.mjs",
+    "suggest-stage": "node scripts/suggest-stage.mjs",
     "build:ci": "npm run sync-content && npm run generate-summary && rm -rf dist .astro && astro build"
   },
   "keywords": [],
