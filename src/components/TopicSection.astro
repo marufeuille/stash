@@ -1,0 +1,165 @@
+---
+import StreamItem from './StreamItem.astro';
+import { excerpt } from '../lib/excerpt';
+import { parseStage, slugifyStage, splitSummary } from '../lib/topics';
+import type { AggregablePost } from '../lib/topics';
+
+interface Props {
+  stage: string;
+  entries: AggregablePost[];
+  parentHeading?: string | null;
+  unstaged?: boolean;
+}
+
+const { stage, entries, parentHeading = null, unstaged = false } = Astro.props;
+
+const parsed = parseStage(stage);
+const stageId = unstaged ? 'unstaged' : `stage-${slugifyStage(stage)}`;
+const heading = unstaged ? '未分類' : parsed.leaf;
+
+const { latestSummary, pastSummaries, regular } = unstaged
+  ? { latestSummary: null, pastSummaries: [], regular: entries }
+  : splitSummary(entries);
+
+function renderProps(post: AggregablePost) {
+  const d = post.data;
+  const base = {
+    href: `/${d.type}/${post.id}/`,
+    title: d.title ?? (d.type === 'reading' ? d.book : d.type === 'link' ? safeHost(d.url) : 'Untitled'),
+    date: d.date,
+    tags: d.tags,
+  };
+  if (d.type === 'photo') {
+    return { ...base, type: 'photo' as const, image: d.image, alt: d.alt };
+  }
+  if (d.type === 'reading') {
+    return {
+      ...base,
+      type: 'reading' as const,
+      book: d.book,
+      author: d.author,
+      progress: d.progress,
+      excerpt: excerpt(post.body),
+    };
+  }
+  if (d.type === 'link') {
+    return {
+      ...base,
+      type: 'link' as const,
+      url: d.url,
+      quote: d.quote,
+      excerpt: excerpt(post.body),
+    };
+  }
+  return { ...base, type: 'note' as const, excerpt: excerpt(post.body) };
+}
+
+function safeHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'Untitled';
+  }
+}
+---
+
+{parentHeading && <h2 class="parent-heading">{parentHeading}</h2>}
+
+<section class="stage" id={stageId}>
+  <h3 class={`stage-heading ${parsed.depth >= 2 ? 'is-child' : ''}`}>{heading}</h3>
+
+  {latestSummary && (
+    <aside class="summary current" aria-label="現在の結論">
+      <span class="summary-label">いまの結論</span>
+      <StreamItem {...renderProps(latestSummary)} hideTopicLabel={true} />
+    </aside>
+  )}
+
+  {pastSummaries.length > 0 && (
+    <details class="past-summaries">
+      <summary>過去の結論 ({pastSummaries.length})</summary>
+      <div class="past-summary-list">
+        {pastSummaries.map((p) => <StreamItem {...renderProps(p)} hideTopicLabel={true} />)}
+      </div>
+    </details>
+  )}
+
+  {regular.length > 0 ? (
+    <div class="entries">
+      {regular.map((p) => <StreamItem {...renderProps(p)} hideTopicLabel={true} />)}
+    </div>
+  ) : (
+    !latestSummary && pastSummaries.length === 0 && (
+      <p class="empty">ここにはまだノートがありません。</p>
+    )
+  )}
+</section>
+
+<style>
+  .parent-heading {
+    margin: 32px 0 8px;
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--faint);
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+  }
+  .stage {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--hairline);
+  }
+  .stage-heading {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 12px;
+    letter-spacing: -0.005em;
+  }
+  .stage-heading.is-child {
+    font-size: 16px;
+    margin-left: 8px;
+  }
+  .summary {
+    border-left: 2px solid var(--note);
+    padding: 4px 14px;
+    margin-bottom: 8px;
+    background: var(--surface);
+  }
+  .summary-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--note);
+    letter-spacing: 0.04em;
+    display: block;
+    padding-top: 8px;
+  }
+  .past-summaries {
+    margin: 8px 0 4px 14px;
+    font-size: 13px;
+  }
+  .past-summaries summary {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    cursor: pointer;
+    padding: 6px 0;
+    list-style: none;
+  }
+  .past-summaries summary::-webkit-details-marker { display: none; }
+  .past-summaries summary::before {
+    content: '▸ ';
+    color: var(--faint);
+  }
+  .past-summaries[open] summary::before { content: '▾ '; }
+  .past-summary-list {
+    border-left: 2px solid var(--hairline);
+    padding-left: 12px;
+    margin-top: 4px;
+  }
+  .empty {
+    color: var(--faint);
+    font-size: 13px;
+    padding: 8px 0;
+  }
+</style>

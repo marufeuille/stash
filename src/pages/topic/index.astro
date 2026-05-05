@@ -1,0 +1,104 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const topics = (await getCollection('topic'))
+  .filter((t) => !t.data.draft)
+  .sort((a, b) => a.data.title.localeCompare(b.data.title, 'ja'));
+
+const [photos, readings, notes, links] = await Promise.all([
+  getCollection('photo'),
+  getCollection('reading'),
+  getCollection('note'),
+  getCollection('link'),
+]);
+
+const activePosts = [...photos, ...readings, ...notes, ...links].filter(
+  (p) => !p.data.draft,
+);
+
+const countBySlug = new Map<string, number>();
+for (const p of activePosts) {
+  if (p.data.topic) {
+    countBySlug.set(p.data.topic, (countBySlug.get(p.data.topic) ?? 0) + 1);
+  }
+}
+---
+
+<BaseLayout title="topic — stash" activeNav="topic">
+  <main class="topics">
+    {topics.length === 0 && (
+      <p class="empty">トピックはまだありません。</p>
+    )}
+    {topics.map((t) => (
+      <a class="topic-item" href={`/topic/${t.data.slug}/`}>
+        <div class="meta">
+          <span class="type type-topic">topic</span>
+          <span class="count">{countBySlug.get(t.data.slug) ?? 0} 件</span>
+        </div>
+        <h2 class="title">{t.data.title}</h2>
+        {t.data.description && <p class="description">{t.data.description}</p>}
+        {t.data.stages.length > 0 && (
+          <p class="stages">{t.data.stages.join('  ›  ')}</p>
+        )}
+      </a>
+    ))}
+  </main>
+</BaseLayout>
+
+<style>
+  .topics {
+    border-bottom: 1px solid var(--hairline);
+  }
+  .empty {
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 32px 0;
+  }
+  .topic-item {
+    display: block;
+    padding: 28px 0;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink);
+    transition: background 0.15s ease;
+  }
+  .topic-item:hover {
+    background: var(--hover-bg);
+  }
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .type {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+  }
+  .description {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+  .stages {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+</style>

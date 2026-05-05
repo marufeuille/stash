@@ -9,7 +9,7 @@ const REPO = process.env.STASH_VAULT_REPO;
 const TOKEN = process.env.STASH_VAULT_TOKEN;
 const BRANCH = process.env.STASH_VAULT_BRANCH || 'main';
 
-const SUBDIRS = ['note', 'reading', 'photo', 'link', 'attachments'];
+const SUBDIRS = ['note', 'reading', 'photo', 'link', 'topic', 'attachments'];
 const ROOT_FILES = [{ from: 'about.md', to: 'meta/about.md' }];
 
 function run(cmd) {

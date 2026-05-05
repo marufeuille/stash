@@ -6,7 +6,7 @@ import { buildGraph } from './graph';
 
 export type SearchEntry = {
   id: string;
-  type: 'note' | 'reading' | 'photo' | 'link';
+  type: 'note' | 'reading' | 'photo' | 'link' | 'topic';
   href: string;
   title: string;
   date: string;
@@ -15,14 +15,17 @@ export type SearchEntry = {
   source?: string;
   body: string;
   follows: string[];
+  topic?: string;
+  stage?: string;
 };
 
 export async function buildSearchIndex(): Promise<SearchEntry[]> {
-  const [photos, readings, notes, links] = await Promise.all([
+  const [photos, readings, notes, links, topics] = await Promise.all([
     getCollection('photo'),
     getCollection('reading'),
     getCollection('note'),
     getCollection('link'),
+    getCollection('topic'),
   ]);
 
   const activePosts = [...notes, ...readings, ...photos, ...links].filter((p) => !p.data.draft);
@@ -32,9 +35,11 @@ export async function buildSearchIndex(): Promise<SearchEntry[]> {
   const followsOf = (type: string, slug: string): string[] =>
     graph.parents.get(`${type}/${slug}`) ?? [];
 
-  return allPosts.map<SearchEntry>((p) => {
+  const postEntries = allPosts.map<SearchEntry>((p) => {
     const date = p.data.date.toISOString().slice(0, 10);
     const follows = followsOf(p.data.type, p.id);
+    const topic = p.data.topic;
+    const stage = p.data.stage;
     if (p.data.type === 'reading') {
       const title = p.data.title ?? p.data.book;
       const source = `${p.data.book} — ${p.data.author}`;
@@ -49,6 +54,8 @@ export async function buildSearchIndex(): Promise<SearchEntry[]> {
         source,
         body: stripMarkdown(p.body),
         follows,
+        topic,
+        stage,
       };
     }
     if (p.data.type === 'photo') {
@@ -63,6 +70,8 @@ export async function buildSearchIndex(): Promise<SearchEntry[]> {
         excerpt: p.data.alt ?? '',
         body: p.data.alt ?? '',
         follows,
+        topic,
+        stage,
       };
     }
     if (p.data.type === 'link') {
@@ -83,6 +92,8 @@ export async function buildSearchIndex(): Promise<SearchEntry[]> {
         source: host || p.data.url,
         body: [p.data.quote ?? '', stripMarkdown(p.body)].filter(Boolean).join(' '),
         follows,
+        topic,
+        stage,
       };
     }
     const title = p.data.title ?? 'Untitled';
@@ -96,6 +107,25 @@ export async function buildSearchIndex(): Promise<SearchEntry[]> {
       excerpt: excerpt(p.body, 140),
       body: stripMarkdown(p.body),
       follows,
+      topic,
+      stage,
     };
   });
+
+  const topicEntries: SearchEntry[] = topics
+    .filter((t) => !t.data.draft)
+    .map<SearchEntry>((t) => ({
+      id: `topic/${t.data.slug}`,
+      type: 'topic',
+      href: `/topic/${t.data.slug}/`,
+      title: t.data.title,
+      date: '',
+      tags: [],
+      excerpt: t.data.description ?? '',
+      body: [t.data.description ?? '', t.data.stages.join(' ')].filter(Boolean).join(' '),
+      follows: [],
+      topic: t.data.slug,
+    }));
+
+  return [...topicEntries, ...postEntries];
 }

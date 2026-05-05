@@ -16,9 +16,29 @@ interface Props {
   alt?: string;
   url?: string;
   quote?: string;
+  topic?: string;
+  stage?: string;
+  hideTopicLabel?: boolean;
 }
 
-const { type, href, title, date, tags, excerpt, book, author, progress, image, alt, url, quote } = Astro.props;
+const {
+  type,
+  href,
+  title,
+  date,
+  tags,
+  excerpt,
+  book,
+  author,
+  progress,
+  image,
+  alt,
+  url,
+  quote,
+  topic,
+  stage,
+  hideTopicLabel = false,
+} = Astro.props;
 const dateStr = date.toISOString().slice(0, 10);
 let host: string | null = null;
 if (type === 'link' && url) {
@@ -42,6 +62,11 @@ if (type === 'link' && url) {
       )}
       {tags.length > 0 && type !== 'reading' && type !== 'link' && (
         <span class="tags">{tags.join('  ')}</span>
+      )}
+      {!hideTopicLabel && topic && (
+        <span class="topic-label">
+          {topic}{stage && <span class="stage-sep"> › </span>}{stage}
+        </span>
       )}
     </div>
     <time datetime={dateStr}>{dateStr}</time>
@@ -118,6 +143,14 @@ if (type === 'link' && url) {
     font-family: var(--mono);
     font-size: 11px;
     color: var(--faint);
+  }
+  .topic-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .stage-sep {
+    color: var(--faintest);
   }
   .tags-trail {
     display: inline-block;

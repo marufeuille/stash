@@ -22,6 +22,8 @@ const posts = sortPostsDesc(
         date={post.data.date}
         tags={post.data.tags}
         excerpt={excerpt(post.body)}
+        topic={post.data.topic}
+        stage={post.data.stage}
       />
     ))}
   </main>

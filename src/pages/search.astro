@@ -31,7 +31,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
   type Entry = {
     id: string;
-    type: 'note' | 'reading' | 'photo' | 'link';
+    type: 'note' | 'reading' | 'photo' | 'link' | 'topic';
     href: string;
     title: string;
     date: string;
@@ -40,6 +40,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     source?: string;
     body: string;
     follows: string[];
+    topic?: string;
+    stage?: string;
   };
 
   const HOP_DEPTH = 2;
@@ -81,18 +83,35 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     art.dataset.id = e.id;
     art.style.order = String(index);
 
+    const tagsPart = e.tags.length
+      ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
+      : '';
+    const excerptLine = e.excerpt ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>` : '';
+
+    if (e.type === 'topic') {
+      // Topic は集約ページなので展開せず、直接リンクで開く。
+      art.innerHTML = `
+        <a class="item-link" href="${e.href}">
+          <div class="meta">
+            <div class="meta-left">
+              <span class="type type-${e.type}">${e.type}</span>
+              ${tagsPart}
+            </div>
+          </div>
+          <h2 class="title">${escapeHtml(e.title)}</h2>
+          ${excerptLine}
+        </a>
+      `;
+      return art;
+    }
+
     const sourcePart =
       (e.type === 'reading' || e.type === 'link') && e.source
         ? `<span class="source">${escapeHtml(e.source)}</span>`
         : '';
-    const tagsPart = e.tags.length
-      ? `<span class="tags">${escapeHtml(e.tags.join('  '))}</span>`
-      : '';
     const metaRight = [sourcePart, tagsPart]
       .filter(Boolean)
       .join('<span class="meta-sep" aria-hidden="true">/</span>');
-
-    const excerptLine = e.excerpt ? `<p class="excerpt">${escapeHtml(e.excerpt)}</p>` : '';
 
     art.innerHTML = `
       <button class="item-header" type="button" aria-expanded="false" aria-controls="${domIdFor(e.id)}-body">
@@ -458,7 +477,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     mini = new MiniSearch<Entry>({
       idField: 'id',
-      fields: ['title', 'tags', 'source', 'body'],
+      fields: ['title', 'tags', 'source', 'body', 'topic', 'stage'],
       storeFields: ['id'],
       tokenize: (text) => tokenize(text),
       processTerm: (t) => t,
@@ -468,7 +487,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         return typeof v === 'string' ? v : '';
       },
       searchOptions: {
-        boost: { title: 3, tags: 2, source: 2, body: 1 },
+        boost: { title: 3, tags: 2, source: 2, topic: 2, stage: 2, body: 1 },
         fuzzy: 0.2,
         prefix: true,
         combineWith: 'AND',
@@ -627,6 +646,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     outline: 2px solid var(--ink);
     outline-offset: -2px;
   }
+  .stream :global(.item-link) {
+    display: block;
+    padding: 24px 20px 24px 0;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .stream :global(.item-link:hover) {
+    background: var(--hover-bg);
+  }
+  .stream :global(.item-link:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
+  }
   .stream :global(.meta) {
     display: flex;
     justify-content: space-between;
@@ -649,6 +681,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .stream :global(.type-reading) { color: var(--reading); }
   .stream :global(.type-photo) { color: var(--photo); }
   .stream :global(.type-link) { color: var(--link); }
+  .stream :global(.type-topic) { color: var(--muted); }
   .stream :global(.tags),
   .stream :global(.item-header time) {
     font-family: var(--mono);

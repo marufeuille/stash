@@ -25,6 +25,8 @@ const posts = sortPostsDesc(
           url={post.data.url}
           quote={post.data.quote}
           excerpt={excerpt(post.body)}
+          topic={post.data.topic}
+          stage={post.data.stage}
         />
       );
     })}
