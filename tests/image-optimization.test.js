@@ -17,19 +17,19 @@ describe('画像最適化の設定', () => {
     expect(src).toMatch(/schema:\s*\(\s*\{\s*image\s*\}\s*\)\s*=>/);
   });
 
-  it('CardPhoto で Image コンポーネントをインポートしている', () => {
-    const src = readFileSync(resolve(ROOT, 'src/components/CardPhoto.astro'), 'utf-8');
+  it('StreamItem で Image コンポーネントをインポートしている', () => {
+    const src = readFileSync(resolve(ROOT, 'src/components/StreamItem.astro'), 'utf-8');
     expect(src).toContain("import { Image } from 'astro:assets'");
   });
 
-  it('CardPhoto で Image コンポーネントを使用している', () => {
-    const src = readFileSync(resolve(ROOT, 'src/components/CardPhoto.astro'), 'utf-8');
+  it('StreamItem で Image コンポーネントを使用している', () => {
+    const src = readFileSync(resolve(ROOT, 'src/components/StreamItem.astro'), 'utf-8');
     expect(src).toContain('<Image');
     expect(src).toContain('format="webp"');
   });
 
-  it('CardPhoto のサムネイルにサイズ指定がある', () => {
-    const src = readFileSync(resolve(ROOT, 'src/components/CardPhoto.astro'), 'utf-8');
+  it('StreamItem のサムネイルにサイズ指定がある', () => {
+    const src = readFileSync(resolve(ROOT, 'src/components/StreamItem.astro'), 'utf-8');
     expect(src).toMatch(/width=\{?\d+\}?/);
     expect(src).toMatch(/height=\{?\d+\}?/);
   });
@@ -58,8 +58,8 @@ describe('画像最適化の設定', () => {
 });
 
 describe('すべての画像に alt 属性が設定されている', () => {
-  it('CardPhoto コンポーネントで alt が設定されている', () => {
-    const src = readFileSync(resolve(ROOT, 'src/components/CardPhoto.astro'), 'utf-8');
+  it('StreamItem コンポーネントで alt が設定されている', () => {
+    const src = readFileSync(resolve(ROOT, 'src/components/StreamItem.astro'), 'utf-8');
     expect(src).toMatch(/<Image[^>]*alt=/);
   });
 
@@ -99,8 +99,8 @@ describe('ビルド結果の画像最適化検証', () => {
 
   it('トップページのサムネイル画像が最適化されている', () => {
     const html = readFileSync(resolve(ROOT, 'dist/index.html'), 'utf-8');
-    // photo カードに最適化済み画像がある
-    expect(html).toContain('card-photo');
+    // photo タイプのカードに最適化済み画像がある
+    expect(html).toContain('type-photo');
     expect(html).toMatch(/src="[^"]*\/_astro\/[^"]*"/);
   });
 

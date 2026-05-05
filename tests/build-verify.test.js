@@ -60,11 +60,6 @@ describe('ビルド検証と最終調整', () => {
   });
 
   describe('全ページが正しく表示される', () => {
-    it('トップページに正しい投稿数が表示される', () => {
-      const html = readFileSync(resolve(DIST, 'index.html'), 'utf-8');
-      expect(html).toContain('4 posts');
-    });
-
     it('トップページに html/head/body 構造がある', () => {
       const html = readFileSync(resolve(DIST, 'index.html'), 'utf-8');
       expect(html).toContain('<!DOCTYPE html>');

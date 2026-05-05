@@ -4,10 +4,15 @@
   "description": "",
   "scripts": {
     "dev": "astro dev",
+    "predev": "npm run sync:fixtures && npm run generate-summary",
     "build": "astro build",
+    "prebuild": "npm run sync:fixtures && npm run generate-summary",
     "check": "astro check",
+    "precheck": "npm run sync:fixtures && npm run generate-summary",
     "test": "vitest run",
+    "pretest": "npm run sync:fixtures && npm run generate-summary",
     "sync-content": "node scripts/sync-content.mjs",
+    "sync:fixtures": "STASH_VAULT_PATH=fixtures/dev-vault node scripts/sync-content.mjs",
     "generate-summary": "node scripts/generate-recent-summary.mjs",
     "suggest-stage": "node scripts/suggest-stage.mjs",
     "build:ci": "npm run sync-content && npm run generate-summary && rm -rf dist .astro && astro build"
